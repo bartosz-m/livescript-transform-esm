@@ -17,10 +17,18 @@ export PI = 3.14
 export const MEANING_OF_LIFE = 42
 export const E = 2.718281828 
 
-let Zero = { x: 0, y: 0 }
-    export 
-        ZeroVector: Zero
-        VectorZero: Zero
+# let Zero = { x: 0, y: 0 }
+#     export 
+#         ZeroVector: Zero
+#         VectorZero: Zero
+
+export default -> "I'm default"
+
+export default class
+    !->
+    foo: -> \bar
+
+export class Bar
 
 export
     center = 0

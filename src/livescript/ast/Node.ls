@@ -1,19 +1,32 @@
+require! {
+    \./symbols : { parent, type }
+}
 Node = module.exports = Object.create null
 Node <<<
-  (Symbol.has-instance): -> Object.is-prototype-of ...
-  is-statement: -> false
-  
-  terminator: '' # required by Block
-  
-  unfold-soak: ->
-  
-  unparen: -> @
-  
-  rip-name: !-> @name = it
+    (Symbol.has-instance): -> Object.is-prototype-of ...
+    (type): \Node
+    is-statement: -> false
     
-  rewrite-shorthand: (o, assign) !->
+    terminator: '' # required by Block
     
-  compile: (options, level) ->
+    unfold-soak: ->
+    
+    unparen: -> @
+    
+    rip-name: !-> @name = it
+      
+    rewrite-shorthand: (o, assign) !->
+      
+    replace-child: ->
+        throw Error "You need to implement method Node::replace-child youreself"
+    
+    replace-with: (...nodes) ->
+        unless @[parent].replace-child
+            console.log @[parent]
+            throw Error "Node doesn't imlement replace-child method"
+        @[parent].replace-child @, ...nodes
+      
+    compile: (options, level) ->
         o = {} <<< options
         o.level? = level
         node = @unfold-soak o or this
