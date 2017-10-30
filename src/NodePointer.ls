@@ -35,7 +35,6 @@ NodePointer = Object.create null
               throw Error "Replacing without nodes"
           if nodes.length > 1 and @name != \lines
               throw Error "Don't know how to replace multiple #{@name}"
-          console.log "replacing #{@node@@name} with #{nodes.0@@name} in #{@parent@@name}::#{@name}[#{@index}]"
           # nodes can be added or remove so posiotion in parent can change any time
           index = @parent[@name].index-of @node
           @parent[@name].splice index, 1, ...nodes

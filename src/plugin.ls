@@ -14,29 +14,6 @@ Creatable = Object.create null
     ..create = (arg) ->
         Object.create @
             ..init arg
-    
-class Node
-  is-statement: -> false
-  
-  terminator: '' # required by Block
-  
-  unfold-soak: ->
-  
-  unparen: -> @
-  
-  rip-name: !-> @name = it
-    
-  rewrite-shorthand: (o, assign) !->
-    
-  compile: (options, level) ->
-        o = {} <<< options
-        o.level? = level
-        node = @unfold-soak o or this
-        # If a statement appears within an expression, wrap it in a closure.
-        return node.compile-closure o if o.level and node.is-statement!
-        code = (node <<< tab: o.indent).compile-node o
-        if node.temps then for tmp in that then o.scope.free tmp
-        code
           
           
 # Question unfold-soak, compile vs compile-node
@@ -107,7 +84,7 @@ extendable-function = (fn) ->
         extended-fn
             .. <<< {extensions}
       
-SymbolExport = Object.create Node::
+SymbolExport = Object.create Node
     ..init = (@{symbol, alias}) ->
     
     
@@ -125,9 +102,8 @@ SymbolExport = Object.create Node::
     
     ..terminator = ';'
 
-Export = Object.create Node::
+Export = Object.create Node
     ..type = \Export
-    ..[Symbol.hasInstance] = -> Object.is-prototype-of ...
     ..prototype = ..
     ..display-name = \Export
     ..init = extendable-function (@{local, alias}) ->
@@ -177,7 +153,7 @@ DefaultExport = Object.create Export
     Object.define-property .., \terminator,
         get: -> @local.terminator
 
-TemporarVariable = Object.create Node::
+TemporarVariable = Object.create Node
     ..display-name = \TemporarVariable
     ..constructor = ..
     
@@ -194,7 +170,7 @@ TemporarVariable = Object.create Node::
         Object.create @
             ..init arg
 
-Identifier = Object.create Node::
+Identifier = Object.create Node
     .. <<< Creatable
     ..display-name = \Identifier
     ..constructor = ..
@@ -210,7 +186,7 @@ Identifier = Object.create Node::
     # terminator dependts on export target
     # ..terminator = ';'
 
-TemporarAssigment = Object.create Node::
+TemporarAssigment = Object.create Node
     ..display-name = \TemporarAssigment
     ..constructor = ..
     
@@ -240,7 +216,7 @@ TemporarAssigment = Object.create Node::
 assert DefaultExport instanceof Export
 assert DefaultExport instanceof Node
 
-FunctionExport = Object.create Node::
+FunctionExport = Object.create Node
     ..init = (@{\function,alias}) ->
       
     ..terminator = \;
@@ -267,7 +243,7 @@ FunctionExport = Object.create Node::
                 throw Error "Export of anonymous functions is not supported line #{@function.line}"
             sn @function, 'export ' @function.compile o
 
-ExpressionExport = Object.create Node::
+ExpressionExport = Object.create Node
     ..init = (@{expression}) ->
       
     ..terminator = ';'
@@ -609,7 +585,7 @@ Plugin = Object.create livescript-ast-transform
         Self = @
         original-cascade-compile = Cascade::compile
       
-        Node::livescript = @livescript
+        Nodelivescript = @livescript
         Block::compile-root = ->
             console.dir @, depth: 6
             exports = find-exports Self.livescript, @
