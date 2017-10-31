@@ -3,6 +3,7 @@ require! {
     \chokidar
     \fs-extra : fs
     \livescript : livescript
+    \livescript-transform-object-create
 }
 
 absolute-path = -> path.normalize path.join __dirname, it

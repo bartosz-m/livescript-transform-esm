@@ -12,11 +12,10 @@ sn = (node = {}, ...parts) ->
         console.dir parts
         throw e
 
-Creatable = Object.create null
-Creatable <<<
-  create: (arg) ->
-        Object.create @
-            ..init arg
+Creatable = 
+    create: (arg) ->
+          Object.create @
+              ..init arg
           
           
 # Question unfold-soak, compile vs compile-node
@@ -92,7 +91,7 @@ extendable-function = (fn) ->
             .. <<< {extensions}
     
 
-Export = Object.create Node
+Export = ^^Node
     .. <<< Creatable
     ..[type] = \Export
     ..init = extendable-function (@{local, alias}) ->
@@ -124,7 +123,7 @@ Export = Object.create Node
                 @_local = it
             
 
-DefaultExport = Object.create Export
+DefaultExport = ^^Export
     ..[type] = \DefaultExport
     
     ..init = extendable-function (@{local}) !->
@@ -137,15 +136,17 @@ DefaultExport = Object.create Export
         inner = (@local.compile o)
         sn @local, "export default ", inner
     
+    .. <<<
+        terminator:~
+            -> @local.terminator
     
-    
-    Object.define-properties ..,
-        # terminator dependts on export target
-        terminator:
-            get: -> @local.terminator
+    # Object.define-properties ..,
+    #     # terminator dependts on export target
+    #     terminator:
+    #         get: -> @local.terminator
     
 
-TemporarVariable = Object.create Node
+TemporarVariable = ^^Node
     .. <<< Creatable
     ..[type] = \TemporarVariable
     
@@ -157,7 +158,7 @@ TemporarVariable = Object.create Node
         @temporary-name ?= o.scope.temporary @name
         sn @, @temporary-name
     
-Identifier = Object.create Node
+Identifier = ^^Node
     .. <<< Creatable
     ..[type] = \Identifier
     
@@ -168,15 +169,15 @@ Identifier = Object.create Node
     ..compile = extendable-function (o) ->
         sn @, @name
 
-TemporarAssigment = Object.create Node
+TemporarAssigment = ^^Node
     .. <<< Creatable
     ..[type] = \TemporarAssigment
         
     ..init = extendable-function (@{left,right}) !->
       
     ..traverse-children = (visitor, cross-scope-boundary) ->
-        visitor @local, @, \left
-        visitor @local, @, \right
+        visitor @left, @, \left
+        visitor @right, @, \right
         @left.traverse-children ...&
         @right.traverse-children ...&
     
@@ -185,24 +186,41 @@ TemporarAssigment = Object.create Node
     
     ..terminator = ';'
     
-    Object.define-properties ..,
-        left:
-            get: -> @_left
-            set: ->
-                it[parent] = @
-                @_left = it
-        right:
-            get: -> @_right
-            set: ->
-                it[parent] = @
-                @_right = it
+    .. <<<
+        left:~
+            -> @_left
+            (v) ->
+                v[parent] = @
+                @_left = v
+        right:~
+            -> @_right
+            (v) ->
+                v[parent] = @
+                @_right = v
+    
+    # Object.define-properties ..,
+    #     left:
+    #         get: -> @_left
+    #         set: ->
+    #             it[parent] = @
+    #             @_left = it
+    #     right:
+    #         get: -> @_right
+    #         set: ->
+    #             it[parent] = @
+    #             @_right = it
 
 assert DefaultExport instanceof Export
 assert DefaultExport instanceof Node
 
+import-properties = (target, ...sources) ->
+    for source in sources
+        Object.define-properties target, Object.get-own-property-descriptors source
+    target
+
 pipe = Symbol \Stream::pipe
 
-Passthrough = Object.create null
+Passthrough = ^^null
     .. <<< Creatable
 Passthrough <<<
     init: !->
@@ -224,7 +242,7 @@ Passthrough <<<
         @buffer.push x
         @flush! if @outputs.length > 0
 
-Transformator = Object.create null
+Transformator = ^^null
     .. <<< Creatable
 Transformator <<< 
     init: (arg) !->
@@ -259,7 +277,7 @@ Transformator <<<
     transform: (x) ->
         throw Error "You need to implement transform method youreself"
 
-Sink = Object.create null
+Sink = ^^null
     .. <<< Creatable
 Sink <<<
     init: ({on-data} = {}) !->
@@ -270,15 +288,16 @@ Sink <<<
     
     on-data: !-> throw Error "You need to implement on-data method youreself"
 
-ArraySink = Object.create null
+ArraySink = ^^null
     .. <<< Creatable
 ArraySink <<<
     init: !->
         @value = []
     write: (x) !->
         @value.push x
-      
-BooleanSpliter = Object.create null
+
+
+BooleanSpliter = ^^null
     .. <<< Creatable
 BooleanSpliter <<<
     init: (arg) !->
@@ -294,29 +313,29 @@ BooleanSpliter <<<
         then @true-output.write it
         else @false-output.write it
 
-FilterStream = Object.create null
-    .. <<< Passthrough
+FilterStream = ^^null
+    import-properties .., Passthrough
 FilterStream <<<
     init: (arg) !->
-        @filter = arg.check if arg?filter?
+        Passthrough.init ...
+        @filter = arg.filter if arg?filter?
     filter: ->  throw Error "You need to implement filter method youreself"
     
     write: ->
         if @filter it
             Passthrough.write ...
       
-Merger = Object.create null
-    Object.define-properties .., Object.get-own-property-descriptors Passthrough
-    # .. <<< Passthrough
+Merger = ^^null
+    import-properties .., Passthrough
     ..init = (arg) !->
-        Passthrough.init.call @, arg
+        Passthrough.init ...
         if arg.streams
             for stream in arg.streams
                 stream[pipe] @
 
-SyncSink = Object.create null
+SyncSink = ^^null
     .. <<< Sink
-    ..init = !-> Sink.init.call @, it
+    ..init = !-> Sink.init ...
     ..write = (element) ->
         if Array.is-array element
             for k,v in element
@@ -333,7 +352,7 @@ SyncSink = Object.create null
         Sink.write.call @, element
 
 # Encapsulates two streams into single one
-ComposedStream = Object.create null
+ComposedStream = ^^null
     .. <<< Creatable
     ..init = (arg) !->
         @input = arg.input
@@ -344,7 +363,7 @@ ComposedStream = Object.create null
     ..[pipe] = -> @output[pipe] it
 
 # Encapsulates multiple streams into single one
-CascadeStream = Object.create null
+CascadeStream = ^^null
     .. <<< Creatable
     ..init = (arg) !->
         @streams = arg.streams
@@ -360,6 +379,10 @@ CascadeStream = Object.create null
     ..[pipe] = -> @output[pipe] it
 
 Helper =
+    filter: (...filters) ->
+        streams = filters.map ~> FilterStream.create filter: it
+        CascadeStream.create { streams }
+            @[pipe] ..
     map: (...transforms) ->
         if transforms.length == 1
             Transformator.create { transform: transforms.0 }
@@ -576,6 +599,7 @@ fixes =
         ast :
             entries:
                 assign-type: ([class-name, _class]) ->
+                    console.log class-name
                     _class::[type] = class-name
             values:
                 add-method-replace-with: ->
@@ -587,7 +611,7 @@ fixes =
 # livescript-ast-transform gives us install and uninstall methods
 # also throws error with more meaningfull message if we forget implement
 # 'enable' and 'disable' methods
-Plugin = Object.create livescript-ast-transform
+Plugin = ^^livescript-ast-transform
     module.exports = ..
 
     ..name = 'transform-es-modules'
@@ -621,7 +645,7 @@ Plugin = Object.create livescript-ast-transform
         ast-entries-fixes = Object.values fixes.livescript.ast.entries .map -> Transformator.create transform: it
         ast-fixes = CascadeStream.create streams: ast-entries-fixes
         stream = Passthrough.create!
-        entries-fixed = stream.map Object.entries .[pipe] ast-fixes .sync!
+        entries-fixed = stream.map Object.entries .filter (.0 != \plugins) .[pipe] ast-fixes .sync!
         stream.write @livescript.ast
         Nodelivescript = @livescript
         Block::compile-root = (o) ->

@@ -4,7 +4,7 @@
   "description": "Livescript plugin enabling es modules in generated code",
   "main": "lib/index.js",
   "scripts": {
-    "test": "node_modules/.bin/lsc test",
+    "test": "node_modules/.bin/lsc -r livescript-transform-object-create test",
     "build": "node_modules/.bin/lsc dev/build",
     "develop": "node_modules/.bin/lsc dev/watch"
   },
@@ -24,7 +24,8 @@
     "chokidar": "^1.7.0",
     "diff-lines": "^1.1.0",
     "fs-extra": "^4.0.2",
-    "livescript": "git+https://github.com/bartosz-m/LiveScript.git#macros"
+    "livescript": "git+https://github.com/bartosz-m/LiveScript.git#macros",
+    "livescript-transform-object-create": "0.0.4"
   },
   "dependencies": {
     "livescript-ast-transform": "0.1.0"
