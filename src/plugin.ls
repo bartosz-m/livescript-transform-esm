@@ -293,6 +293,17 @@ BooleanSpliter <<<
         if @check it
         then @true-output.write it
         else @false-output.write it
+
+FilterStream = Object.create null
+    .. <<< Passthrough
+FilterStream <<<
+    init: (arg) !->
+        @filter = arg.check if arg?filter?
+    filter: ->  throw Error "You need to implement filter method youreself"
+    
+    write: ->
+        if @filter it
+            Passthrough.write ...
       
 Merger = Object.create null
     Object.define-properties .., Object.get-own-property-descriptors Passthrough
@@ -321,7 +332,7 @@ SyncSink = Object.create null
                     element[k] = array-sink.value
         Sink.write.call @, element
 
-# Encapsulates multiple streams into single one
+# Encapsulates two streams into single one
 ComposedStream = Object.create null
     .. <<< Creatable
     ..init = (arg) !->
@@ -332,15 +343,43 @@ ComposedStream = Object.create null
     ..write = !-> @input.write it
     ..[pipe] = -> @output[pipe] it
 
+# Encapsulates multiple streams into single one
+CascadeStream = Object.create null
+    .. <<< Creatable
+    ..init = (arg) !->
+        @streams = arg.streams
+        @input = @streams.0
+        @output = @streams[* - 1]
+        
+        for stream in @streams
+            previous-stream[pipe] stream if previous-stream
+            previous-stream = stream
+        unless @input? or @output
+            throw Error "ComposedStream requires both input and output"
+    ..write = !-> @input.write it
+    ..[pipe] = -> @output[pipe] it
+
 Helper =
-    map: (transform) ->
-        Transformator.create { transform }
-            @[pipe] ..
+    map: (...transforms) ->
+        if transforms.length == 1
+            Transformator.create { transform: transforms.0 }
+                @[pipe] ..
+        else
+            streams = transforms.map ~> Transformator.create transform: it
+            CascadeStream.create { streams }
+                @[pipe] ..
     
     merge: (...streams) ->
         Merger.create streams: [@, ...streams]
             
-for Type in [Passthrough, Transformator]
+    sync: !-> @to-array!
+        
+    to-array: ->
+        result = ArraySink.create!
+            @[pipe] ..
+        result.value
+            
+for Type in [CascadeStream, ComposedStream, Passthrough, Transformator]
     Type <<< Helper
 
 
@@ -349,95 +388,60 @@ as-array = ->
     then it
     else [ it ]
 
-line-to-export = (livescript,cascade) ->
+line-to-export = (cascade) ->
     const {input, {lines}: output} = cascade
     if lines.length == 0
         throw Error "Empty export at #{cascade.line}:#{cascade.column}"
     lines.map -> Export.create local: it
 
 
-find-exports = (livescript, node) ->
-    { Cascade } = livescript.ast
-    pointer = NodePointer.create node: node
-    to-replace = pointer.filter ({node,parent,name,index}) ->
-        node instanceof Cascade and node.input?value == \__es-export__
-
 replace-nodes = (to-replace) !->
     to-replace.for-each ({original,transformed}) !->
         original.replace ...transformed
 
         
-insert-export-nodes = (livescript) ->
-    Transformator.create transform: (node) -> as-array line-to-export livescript, node
+insert-export-nodes = ->
+    Transformator.create transform: (node) -> as-array line-to-export node
 
-expand-array-exports = (livescript) ->
-    { Arr } = livescript.ast
-    if-array-exports = BooleanSpliter.create check: (.local instanceof Arr)
-                
-    # expand-array-exports = Transformator.create!
-    #     ..transform = (node) -> node.local.items.map -> Export.create local: it
-    # 
-    # if-array-exports
-    #     ..true-output[pipe] expand-array-exports
+expand-array-exports = ->
+    if-array-exports = BooleanSpliter.create check: (.local[type] == \Arr)
     
     expand-array-exports = if-array-exports.true-output.map (node) ->
+        assert node.local[type] == \Arr
         node.local.items.map -> Export.create local: it
     
     transformed = expand-array-exports.merge if-array-exports.false-output
-    # transformed = Merger.create streams: [
-    #     expand-array-exports,
-    # 
-    # ]
+    
     ComposedStream.create input: if-array-exports, output: transformed
 
-enable-default-exports = (livescript) ->
-    { Block, Cascade, Var } = livescript.ast
+enable-default-exports = ->
     if-export-with-default = BooleanSpliter.create check: ->
-        it.local instanceof Cascade
-        and it.local.input instanceof Var
+        it.local[type] == \Cascade
+        and it.local.input[type] == \Var
         and it.local.input.value == \__es-export-default__
-    
-    
-    # extract-export-target = Transformator.create!
-    #     ..transform = (node) ->
-    #         {input,output} = node.local 
-    #         unless output instanceof Block
-    #             throw Error "Expected Block at #{output.line} but found #{output@@name}"
-    #         unless output.lines.length == 1
-    #             throw Error "Expected exacly one line in default export at #{output.line} but found #{output.lines.length}"
-    #         output.lines.0
-    
+        
     extract-export-target = if-export-with-default.true-output.map (node) ->
         {input,output} = node.local 
-        unless output instanceof Block
+        unless output[type] == \Block
             throw Error "Expected Block at #{output.line} but found #{output@@name}"
         unless output.lines.length == 1
             throw Error "Expected exacly one line in default export at #{output.line} but found #{output.lines.length}"
         output.lines.0
-    
-    # mark-as-default = Transformator.create!
-    #     ..transform = (node) ->
-    #         Export.create local: node, alias: name: \default
+        
     mark-as-default = extract-export-target.map (node) ->
-        Export.create local: node, alias: name: \default
+        Export.create local: node, alias: Identifier.create name: \default
     
-    # if-export-with-default.true-output[pipe] extract-export-target .[pipe] mark-as-default
-    # extract-export-target .[pipe] mark-as-default
-    
-    # transformed = Merger.create streams: [
-    #     mark-as-default,
-    #     if-export-with-default.false-output
-    # ]
     transformed = mark-as-default.merge if-export-with-default.false-output
     ComposedStream.create input: if-export-with-default, output: transformed
 
 
-enable-literal-exports = (livescript) ->
-    { Assign, Class, Fun, Literal } = livescript.ast
+enable-literal-exports = ->
     if-anonymous-export = BooleanSpliter.create check: ->
-        it.local instanceof Literal
-        or (it.local instanceof Fun and not it.local.name?)
-        or (it.local instanceof Class and not it.local.name?)
+        unless it.local?
+            console.warn "missing .local"
+        it.local?[type] == \Literal
+        or (it.local?[type] == \Fun and not it.local.name?)
+        or (it.local?[type] == \Class and not it.local.name?)
     
     create-temporary-variable = Transformator.create!
         ..transform = (node) ->
@@ -453,10 +457,9 @@ enable-literal-exports = (livescript) ->
     ]
     ComposedStream.create input: if-anonymous-export, output: transformed
     
-enable-anonymous-function-exports = (livescript) ->
-    { Fun } = livescript.ast
+enable-anonymous-function-exports = ->
     if-literal-export = BooleanSpliter.create check: ->
-        it.local instanceof Fun and it.local.name?
+        it.local?[type] == \Fun and it.local.name?
     
     create-temporary-variable = Transformator.create!
         ..transform = (node) ->
@@ -471,9 +474,8 @@ enable-anonymous-function-exports = (livescript) ->
     ComposedStream.create input: if-literal-export, output: transformed
 
 enable-object-exports = (livescript) ->
-    { Obj } = livescript.ast
     if-object-export = BooleanSpliter.create check: ->
-        it.local instanceof Obj
+        it.local?[type] == \Obj
     
     expand-object-exports = Transformator.create!
         ..transform = (node) ->
@@ -488,9 +490,8 @@ enable-object-exports = (livescript) ->
     ]
     ComposedStream.create input: if-object-export, output: transformed
 
-enable-assign-exports = (livescript) ->
-    { Assign } = livescript.ast
-    if-assign-exports = BooleanSpliter.create check: (.local instanceof Assign)
+enable-assign-exports = ->
+    if-assign-exports = BooleanSpliter.create check: (.local?[type] == \Assign)
     
     extract-assigns = Transformator.create!
         ..transform = (node) ->
@@ -505,7 +506,17 @@ enable-assign-exports = (livescript) ->
     ]
     ComposedStream.create input: if-assign-exports, output: transformed
 
+stream-object-entries = (object) ->
+    result = Passthrough.create!
+    for own k,v of object
+        result.write [k,v]
+    result
 
+stream-object-values = (object) ->
+    result = Passthrough.create!
+    for own k,v of object
+        result.write v
+    result
 
 every-ast-node = ->
     walker = Transformator.create transform: (node) ->
@@ -529,7 +540,8 @@ assign-type = ->
     Transformator.create transform: ->
         unless it[type]
             it-prototype = Object.get-prototype-of it
-            it-prototype[type] = it-prototype@@display-name ? it-prototype@@name
+            it-prototype[type] = it@@display-name ? it@@name
+                console.log "setting type" ..
         it
 
 add-replace-with-method = ->
@@ -539,12 +551,11 @@ add-replace-with-method = ->
             it-prototype.replace-with = Node.replace-with
         it
 
-add-replace-child-method = (livescript) ->
-    { Assign, Block } = livescript.ast
+add-replace-child-method = ->
     Transformator.create transform: ->
         unless it.replace-child?
             it-prototype = Object.get-prototype-of it
-            if it instanceof Block
+            if it[type] == \Block
                 it-prototype.replace-child = (child, ...nodes) ->
                     idx = @lines.index-of child
                     unless idx > -1
@@ -559,11 +570,19 @@ add-replace-child-method = (livescript) ->
                 it-prototype.replace-child = (child, ...nodes) -> ...
         it
 
-# assign-parent = (livescript) ->
-#     Transformator.create transform: ->
-        
-    
-    
+
+fixes =
+    livescript:
+        ast :
+            entries:
+                assign-type: ([class-name, _class]) ->
+                    _class::[type] = class-name
+            values:
+                add-method-replace-with: ->
+                    unless it::replace-with
+                        it::replace-with = Node.replace-with
+                    it
+                      
 
 # livescript-ast-transform gives us install and uninstall methods
 # also throws error with more meaningfull message if we forget implement
@@ -599,10 +618,14 @@ Plugin = Object.create livescript-ast-transform
         original-compile-root = Block::compile-root
         Self = @
         original-cascade-compile = Cascade::compile
-      
+        ast-entries-fixes = Object.values fixes.livescript.ast.entries .map -> Transformator.create transform: it
+        ast-fixes = CascadeStream.create streams: ast-entries-fixes
+        stream = Passthrough.create!
+        entries-fixed = stream.map Object.entries .[pipe] ast-fixes .sync!
+        stream.write @livescript.ast
         Nodelivescript = @livescript
-        Block::compile-root = ->
-            console.dir @, depth: 6
+        Block::compile-root = (o) ->
+            # console.dir @, depth: 6
             walker = every-ast-node!
             fix0 = assign-parent-return-as-node!
             fix1 = add-replace-with-method!
@@ -623,7 +646,6 @@ Plugin = Object.create livescript-ast-transform
             # found-exports.true-output[pipe] sink
             
             transformations = [
-                insert-export-nodes
                 enable-default-exports
                 enable-object-exports
                 expand-array-exports
@@ -632,9 +654,23 @@ Plugin = Object.create livescript-ast-transform
                 enable-anonymous-function-exports
             ]
             
+            filter-exports = BooleanSpliter.create check: -> (.[type] == \Export )
+            
+            do-something-with-exports = Transformator.create transform: (export-node) ->
+                i = 0
+                first-stream = transformations[i] livescript
+                    out-stream = ..
+                while ++i < transformations.length 
+                    in-stream = out-stream
+                    out-stream = transformations[i] livescript
+                    in-stream[pipe] out-stream
+            
+                first-stream.write original
+            filter-exports.true-output[pipe] do-something-with-exports
+            
             t0 = Transformator.create!
                 ..transform = (original) ->
-                    console.log \transforming
+                    inserted-exports = insert-export-nodes!
                     i = 0
                     first-stream = transformations[i] livescript
                         out-stream = ..
@@ -642,19 +678,30 @@ Plugin = Object.create livescript-ast-transform
                         in-stream = out-stream
                         out-stream = transformations[i] livescript
                         in-stream[pipe] out-stream
-                    
-                    first-stream.write original
+                    inserted-exports[pipe] first-stream
+                    inserted-exports.write original
                     {original,transformed:out-stream}
-            t0.debug = console~log
             replacer = SyncSink.create on-data: (element) !->
                 {original,transformed} = element
-                console.log \replacing original[type]
+                # console.log \replacing original[type]
                 original.replace-with ...transformed
             t0[pipe] replacer
             found-exports.true-output[pipe] t0
-            walker.write @
+            # walker.write @
+            root = Passthrough.create!
+            root[pipe] walker
+            root.map (node) ->
+                replacer.sync!
+            root.write @
             
             # console.dir @, depth: 6
+            
+            # result =
+            #     if o.bare
+            #     then original-compile-root ...
+            #     else 
+            #         wraper = new Self.livescript.ast.Block [@]
+            #         original-compile-root.call wraper, o with {+bare}
             result = original-compile-root ...
             result
         original-compile-with-declarations = Block::compile-with-declarations
@@ -692,7 +739,6 @@ Plugin = Object.create livescript-ast-transform
                     variables = exported.filter (.storage == \var)
                     constants = exported.filter (.storage == \const)
                     lets = exported.filter (.storage == \let)
-                    console.log \exported exported
                     lines = []
                     lines.push variables if variables.length
                     lines.push lets if lets.length
