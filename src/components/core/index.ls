@@ -1,0 +1,1 @@
+export Creatable = require \./Creatable

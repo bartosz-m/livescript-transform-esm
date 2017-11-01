@@ -294,69 +294,69 @@ ExpressionExport = Object.create Node::
 
 
 
-Passthrough = Object.create null
-    .. <<< Creatable
-    ..name = \Passthrough
-    ..init = !->
-        @buffer = []
-        @outputs = []
-    
-    ..pipe = (output) ->
-        @outputs.push output
-        @flush!
-        output
-        
-    ..flush = !->
-        for element in @buffer
-            for output in @outputs
-                output.write element
-        @buffer = []
-        
-    ..write = (x) !->
-        @buffer.push x
-        @flush! if @outputs.length > 0
-
-Transformator = Object.create null
-    .. <<< Creatable
-    ..init = (arg) !->
-        @transform = arg.transform if arg?transform?
-        @buffer = []
-        @outputs = []
-        
-    ..pipe = (output) ->
-        @outputs.push output
-        @flush!
-        output
-        
-    ..flush = !->
-        for element in @buffer
-            transformed = @transform element
-            if transformed?pipe?
-                for output in @outputs
-                    transformed.pipe output
-            if transformed.length
-              for e in transformed
-                  for output in @outputs
-                      output.write e
-            else
-                for output in @outputs
-                    output.write transformed
-        @buffer = []
-        
-    ..write = (x) !->
-        @buffer.push x
-        if @outputs.length > 0
-            @flush!
-              
-    ..transform = (x) ->
-        throw Error "You need to implement transform method youreself"
+# Passthrough = Object.create null
+#     .. <<< Creatable
+#     ..name = \Passthrough
+#     ..init = !->
+#         @buffer = []
+#         @outputs = []
+# 
+#     ..pipe = (output) ->
+#         @outputs.push output
+#         @flush!
+#         output
+# 
+#     ..flush = !->
+#         for element in @buffer
+#             for output in @outputs
+#                 output.write element
+#         @buffer = []
+# 
+#     ..write = (x) !->
+#         @buffer.push x
+#         @flush! if @outputs.length > 0
+# 
+# Transformator = Object.create null
+#     .. <<< Creatable
+#     ..init = (arg) !->
+#         @transform = arg.transform if arg?transform?
+#         @buffer = []
+#         @outputs = []
+# 
+#     ..pipe = (output) ->
+#         @outputs.push output
+#         @flush!
+#         output
+# 
+#     ..flush = !->
+#         for element in @buffer
+#             transformed = @transform element
+#             if transformed?pipe?
+#                 for output in @outputs
+#                     transformed.pipe output
+#             if transformed.length
+#               for e in transformed
+#                   for output in @outputs
+#                       output.write e
+#             else
+#                 for output in @outputs
+#                     output.write transformed
+#         @buffer = []
+# 
+#     ..write = (x) !->
+#         @buffer.push x
+#         if @outputs.length > 0
+#             @flush!
+# 
+#     ..transform = (x) ->
+#         throw Error "You need to implement transform method youreself"
         
 Sink = Object.create null
     .. <<< Creatable
     ..init = ({on-data} = {}) !->
         @on-data = on-data if on-data?
         
-    ..write = (x) !->
+    ..push = (x) !->
         @on-data x
     
     ..on-data = !-> throw Error "You need to implement on-data method youreself"

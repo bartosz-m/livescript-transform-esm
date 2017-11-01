@@ -3,6 +3,17 @@ require! <[ assert stream source-map livescript-ast-transform livescript ./lives
 { SourceNode } = source-map
 { parent, type } = require \./livescript/ast/symbols
 
+require! {
+    \./components/core/Creatable
+    \./composition : { import-properties }
+    \./streams/symbols : { pipe }
+    \./streams : { ArraySink, CascadeStream, ComposedStream, DuplexStream, FilterStream, ForkStream, MergeStream, Sink, SyncSink, TransformStream }
+}
+
+Passthrough = DuplexStream
+Transformator = TransformStream
+
+
 sn = (node = {}, ...parts) ->
     try
         result = new SourceNode node.line, node.column, null, parts
@@ -12,16 +23,11 @@ sn = (node = {}, ...parts) ->
         console.dir parts
         throw e
 
-Creatable = 
-    create: (arg) ->
-          Object.create @
-              ..init arg
+
           
           
 # Question unfold-soak, compile vs compile-node
 # info scope.temporary
-
-
 
 array-join = (array, separator) ->
   result = []
@@ -92,18 +98,19 @@ extendable-function = (fn) ->
     
 
 Export = ^^Node
-    .. <<< Creatable
-    ..[type] = \Export
-    ..init = extendable-function (@{local, alias}) ->
+    import-properties .., Creatable
+Export <<<
+    (type): \Export
+    init: (@{local, alias}) ->
       
-    ..traverse-children = (visitor, cross-scope-boundary)->
+    traverse-children: (visitor, cross-scope-boundary)->
         visitor @local, @, \local
         visitor @alias, @, \alias if @alias
         @local.traverse-children ...&
         @alias.traverse-children ...& if @alias
         
     
-    ..compile = extendable-function (o) ->
+    compile: (o) ->
         alias =
             if @alias
                 if  @alias.name != \default
@@ -113,276 +120,102 @@ Export = ^^Node
         inner = (@local.compile o)
         sn @local, "export { ", inner, ...alias, " }"
 
-    ..terminator = ';'
+    terminator: ';'
     
-    Object.define-properties ..,
-        local:
-            get: -> @_local
-            set: ->
-                it[parent] = @
-                @_local = it
+    local:~
+        -> @_local
+        (v) ->
+            v[parent] = @
+            @_local = v
             
 
 DefaultExport = ^^Export
-    ..[type] = \DefaultExport
+DefaultExport <<<
+    (type): \DefaultExport
     
-    ..init = extendable-function (@{local}) !->
+    init: (@{local}) !->
       
-    ..traverse-children = (visitor, cross-scope-boundary) ->
+    traverse-children: (visitor, cross-scope-boundary) ->
         visitor @local, @, \local
         @local.traverse-children ...&
     
-    ..compile = extendable-function (o) ->
+    compile: extendable-function (o) ->
         inner = (@local.compile o)
         sn @local, "export default ", inner
     
-    .. <<<
-        terminator:~
-            -> @local.terminator
-    
-    # Object.define-properties ..,
-    #     # terminator dependts on export target
-    #     terminator:
-    #         get: -> @local.terminator
-    
+    terminator:~
+        -> @local.terminator
 
 TemporarVariable = ^^Node
-    .. <<< Creatable
-    ..[type] = \TemporarVariable
+    import-properties .., Creatable
+TemporarVariable <<<    
+    (type): \TemporarVariable
     
-    ..init = extendable-function (@{name}) !->
+    init: (@{name}) !->
       
-    ..traverse-children = (visitor, cross-scope-boundary) ->
+    traverse-children: (visitor, cross-scope-boundary) ->
     
-    ..compile = extendable-function (o) ->
+    compile: (o) ->
         @temporary-name ?= o.scope.temporary @name
         sn @, @temporary-name
     
 Identifier = ^^Node
-    .. <<< Creatable
-    ..[type] = \Identifier
+    import-properties .., Creatable
+Identifier <<<    
+    (type): \Identifier
     
-    ..init = extendable-function (@{name}) !->
+    init: (@{name}) !->
       
-    ..traverse-children = (visitor, cross-scope-boundary) ->
+    traverse-children: (visitor, cross-scope-boundary) ->
     
-    ..compile = extendable-function (o) ->
+    compile: (o) ->
         sn @, @name
 
 TemporarAssigment = ^^Node
-    .. <<< Creatable
-    ..[type] = \TemporarAssigment
+    import-properties .., Creatable
+TemporarAssigment <<<
+    (type): \TemporarAssigment
         
-    ..init = extendable-function (@{left,right}) !->
+    init: (@{left,right}) !->
       
-    ..traverse-children = (visitor, cross-scope-boundary) ->
+    traverse-children: (visitor, cross-scope-boundary) ->
         visitor @left, @, \left
         visitor @right, @, \right
         @left.traverse-children ...&
         @right.traverse-children ...&
     
-    ..compile = extendable-function (o) ->
+    compile: (o) ->
         sn @, (@left.compile o), ' = ' @right.compile o
     
-    ..terminator = ';'
-    
-    .. <<<
-        left:~
-            -> @_left
-            (v) ->
-                v[parent] = @
-                @_left = v
-        right:~
-            -> @_right
-            (v) ->
-                v[parent] = @
-                @_right = v
-    
-    # Object.define-properties ..,
-    #     left:
-    #         get: -> @_left
-    #         set: ->
-    #             it[parent] = @
-    #             @_left = it
-    #     right:
-    #         get: -> @_right
-    #         set: ->
-    #             it[parent] = @
-    #             @_right = it
+    terminator: ';'
+
+    left:~
+        -> @_left
+        (v) ->
+            v[parent] = @
+            @_left = v
+    right:~ 
+        -> @_right
+        (v) ->
+            v[parent] = @
+            @_right = v
 
 assert DefaultExport instanceof Export
 assert DefaultExport instanceof Node
 
-import-properties = (target, ...sources) ->
-    for source in sources
-        Object.define-properties target, Object.get-own-property-descriptors source
-    target
 
-pipe = Symbol \Stream::pipe
-
-Passthrough = ^^null
-    .. <<< Creatable
-Passthrough <<<
-    init: !->
-        @buffer = []
-        @outputs = []
-    
-    (pipe): (output) ->
-        @outputs.push output
-        @flush!
-        output
-        
-    flush: !->
-        for element in @buffer
-            for output in @outputs
-                output.write element
-        @buffer = []
-        
-    write: (x) !->
-        @buffer.push x
-        @flush! if @outputs.length > 0
-
-Transformator = ^^null
-    .. <<< Creatable
-Transformator <<< 
-    init: (arg) !->
-        Passthrough.init.call @, arg
-        @transform = arg.transform if arg?transform?
-        
-    (pipe): Passthrough[pipe]
-        
-    flush: !->
-        for element in @buffer
-            @debug? \flushing, element
-            if element[pipe]?
-                element[pipe] @
-            else                
-                transformed = @transform element
-                if transformed?[pipe]?
-                    for output in @outputs
-                        transformed[pipe] output
-                else if transformed.length
-                    for e in transformed
-                        for output in @outputs
-                          output.write e
-                else
-                    for output in @outputs
-                        output.write transformed
-        @buffer = []
-        
-    write: (x) !->
-        @buffer.push x
-        @flush! if @outputs.length > 0
-              
-    transform: (x) ->
-        throw Error "You need to implement transform method youreself"
-
-Sink = ^^null
-    .. <<< Creatable
-Sink <<<
-    init: ({on-data} = {}) !->
-        @on-data = on-data if on-data?
-        
-    write: (x) !->
-        @on-data x
-    
-    on-data: !-> throw Error "You need to implement on-data method youreself"
-
-ArraySink = ^^null
-    .. <<< Creatable
-ArraySink <<<
-    init: !->
-        @value = []
-    write: (x) !->
-        @value.push x
-
-
-BooleanSpliter = ^^null
-    .. <<< Creatable
+BooleanSpliter = ^^ForkStream
 BooleanSpliter <<<
+    routes: [true, false]
     init: (arg) !->
-        @check = arg.check if arg?check?
-        @true-output = Passthrough.create!
-            ..name = \true-output
-        @false-output = Passthrough.create!
-            ..name = \false-output
-    check: ->  throw Error "You need to implement check method youreself"
-    
-    write: ->
-        if @check it
-        then @true-output.write it
-        else @false-output.write it
-
-FilterStream = ^^null
-    import-properties .., Passthrough
-FilterStream <<<
-    init: (arg) !->
-        Passthrough.init ...
-        @filter = arg.filter if arg?filter?
-    filter: ->  throw Error "You need to implement filter method youreself"
-    
-    write: ->
-        if @filter it
-            Passthrough.write ...
-      
-Merger = ^^null
-    import-properties .., Passthrough
-    ..init = (arg) !->
-        Passthrough.init ...
-        if arg.streams
-            for stream in arg.streams
-                stream[pipe] @
-
-SyncSink = ^^null
-    .. <<< Sink
-    ..init = !-> Sink.init ...
-    ..write = (element) ->
-        if Array.is-array element
-            for k,v in element
-                if v?[pipe]?
-                    array-sink = ArraySink.create!
-                    v[pipe] array-sink
-                    element[k] = array-sink.value
-        else if \Object == typeof! element 
-            for own k,v of element
-                if v?[pipe]?
-                    array-sink = ArraySink.create!
-                    v[pipe] array-sink
-                    element[k] = array-sink.value
-        Sink.write.call @, element
-
-# Encapsulates two streams into single one
-ComposedStream = ^^null
-    .. <<< Creatable
-    ..init = (arg) !->
-        @input = arg.input
-        @output = arg.output
-        unless @input? or @output
-            throw Error "ComposedStream requires both input and output"
-    ..write = !-> @input.write it
-    ..[pipe] = -> @output[pipe] it
-
-# Encapsulates multiple streams into single one
-CascadeStream = ^^null
-    .. <<< Creatable
-    ..init = (arg) !->
-        @streams = arg.streams
-        @input = @streams.0
-        @output = @streams[* - 1]
-        
-        for stream in @streams
-            previous-stream[pipe] stream if previous-stream
-            previous-stream = stream
-        unless @input? or @output
-            throw Error "ComposedStream requires both input and output"
-    ..write = !-> @input.write it
-    ..[pipe] = -> @output[pipe] it
+        ForkStream.init.call @, arg with {route: arg.check}
 
 Helper =
     filter: (...filters) ->
         streams = filters.map ~> FilterStream.create filter: it
         CascadeStream.create { streams }
             @[pipe] ..
+        
     map: (...transforms) ->
         if transforms.length == 1
             Transformator.create { transform: transforms.0 }
@@ -393,7 +226,11 @@ Helper =
                 @[pipe] ..
     
     merge: (...streams) ->
-        Merger.create streams: [@, ...streams]
+        MergeStream.create streams: [@, ...streams]
+        
+    series: (...streams) ->
+        CascadeStream.create { streams }
+            @[pipe] ..
             
     sync: !-> @to-array!
         
@@ -429,11 +266,11 @@ insert-export-nodes = ->
 expand-array-exports = ->
     if-array-exports = BooleanSpliter.create check: (.local[type] == \Arr)
     
-    expand-array-exports = if-array-exports.true-output.map (node) ->
+    expand-array-exports = if-array-exports.outputs.true.map (node) ->
         assert node.local[type] == \Arr
         node.local.items.map -> Export.create local: it
     
-    transformed = expand-array-exports.merge if-array-exports.false-output
+    transformed = expand-array-exports.merge if-array-exports.outputs.false
     
     ComposedStream.create input: if-array-exports, output: transformed
 
@@ -443,7 +280,7 @@ enable-default-exports = ->
         and it.local.input[type] == \Var
         and it.local.input.value == \__es-export-default__
         
-    extract-export-target = if-export-with-default.true-output.map (node) ->
+    extract-export-target = if-export-with-default.outputs.true.map (node) ->
         {input,output} = node.local 
         unless output[type] == \Block
             throw Error "Expected Block at #{output.line} but found #{output@@name}"
@@ -454,7 +291,7 @@ enable-default-exports = ->
     mark-as-default = extract-export-target.map (node) ->
         Export.create local: node, alias: Identifier.create name: \default
     
-    transformed = mark-as-default.merge if-export-with-default.false-output
+    transformed = mark-as-default.merge if-export-with-default.outputs.false
     ComposedStream.create input: if-export-with-default, output: transformed
 
 
@@ -472,11 +309,11 @@ enable-literal-exports = ->
             assign = TemporarAssigment.create left: tmp, right: node.local
             [assign, Export.create local: assign.left, alias: node.alias]
     
-    if-anonymous-export.true-output[pipe] create-temporary-variable
+    if-anonymous-export.outputs.true[pipe] create-temporary-variable
     
-    transformed = Merger.create streams: [
+    transformed = MergeStream.create streams: [
         create-temporary-variable,
-        if-anonymous-export.false-output
+        if-anonymous-export.outputs.false
     ]
     ComposedStream.create input: if-anonymous-export, output: transformed
     
@@ -488,11 +325,11 @@ enable-anonymous-function-exports = ->
         ..transform = (node) ->
             [node.local, Export.create local: Identifier.create node.local{name}]
     
-    if-literal-export.true-output[pipe] create-temporary-variable
+    if-literal-export.outputs.true[pipe] create-temporary-variable
     
-    transformed = Merger.create streams: [
+    transformed = MergeStream.create streams: [
         create-temporary-variable,
-        if-literal-export.false-output
+        if-literal-export.outputs.false
     ]
     ComposedStream.create input: if-literal-export, output: transformed
 
@@ -505,11 +342,11 @@ enable-object-exports = (livescript) ->
             {items} = node.local
             items.map ({key,val}) -> Export.create local: val, alias: key
     
-    if-object-export.true-output[pipe] expand-object-exports
+    if-object-export.outputs.true[pipe] expand-object-exports
     
-    transformed = Merger.create streams: [
+    transformed = MergeStream.create streams: [
         expand-object-exports,
-        if-object-export.false-output
+        if-object-export.outputs.false
     ]
     ComposedStream.create input: if-object-export, output: transformed
 
@@ -521,32 +358,32 @@ enable-assign-exports = ->
             assign = node.local
             [assign, Export.create local: assign.left]
     
-    if-assign-exports.true-output[pipe] extract-assigns
+    if-assign-exports.outputs.true[pipe] extract-assigns
     
-    transformed = Merger.create streams: [
+    transformed = MergeStream.create streams: [
         extract-assigns,
-        if-assign-exports.false-output
+        if-assign-exports.outputs.false
     ]
     ComposedStream.create input: if-assign-exports, output: transformed
 
 stream-object-entries = (object) ->
     result = Passthrough.create!
     for own k,v of object
-        result.write [k,v]
+        result.push [k,v]
     result
 
 stream-object-values = (object) ->
     result = Passthrough.create!
     for own k,v of object
-        result.write v
+        result.push v
     result
 
 every-ast-node = ->
     walker = Transformator.create transform: (node) ->
         let output = Passthrough.create!
-            output.write {node,parent: null}
+            output.push {node,parent: null}
             walk-ast = (node, parent, name, index) !->
-                output.write {node,parent,name,index}
+                output.push {node,parent,name,index}
         
         # console.log \walking node
         
@@ -643,10 +480,12 @@ Plugin = ^^livescript-ast-transform
         Self = @
         original-cascade-compile = Cascade::compile
         ast-entries-fixes = Object.values fixes.livescript.ast.entries .map -> Transformator.create transform: it
-        ast-fixes = CascadeStream.create streams: ast-entries-fixes
         stream = Passthrough.create!
-        entries-fixed = stream.map Object.entries .filter (.0 != \plugins) .[pipe] ast-fixes .sync!
-        stream.write @livescript.ast
+        entries-fixed = stream.map (.ast)
+        .map Object.entries .filter (.0 != \plugins)
+        .series ...ast-entries-fixes
+        .sync!
+        stream.push @livescript
         Nodelivescript = @livescript
         Block::compile-root = (o) ->
             # console.dir @, depth: 6
@@ -667,7 +506,7 @@ Plugin = ^^livescript-ast-transform
                 { Cascade } = Self.livescript.ast
                 node instanceof Cascade and node.input?value == \__es-export__
             fix-output[pipe] found-exports
-            # found-exports.true-output[pipe] sink
+            # found-exports.outputs.true[pipe] sink
             
             transformations = [
                 enable-default-exports
@@ -689,8 +528,8 @@ Plugin = ^^livescript-ast-transform
                     out-stream = transformations[i] livescript
                     in-stream[pipe] out-stream
             
-                first-stream.write original
-            filter-exports.true-output[pipe] do-something-with-exports
+                first-stream.push original
+            filter-exports.outputs.true[pipe] do-something-with-exports
             
             t0 = Transformator.create!
                 ..transform = (original) ->
@@ -703,20 +542,20 @@ Plugin = ^^livescript-ast-transform
                         out-stream = transformations[i] livescript
                         in-stream[pipe] out-stream
                     inserted-exports[pipe] first-stream
-                    inserted-exports.write original
+                    inserted-exports.push original
                     {original,transformed:out-stream}
             replacer = SyncSink.create on-data: (element) !->
                 {original,transformed} = element
                 # console.log \replacing original[type]
                 original.replace-with ...transformed
             t0[pipe] replacer
-            found-exports.true-output[pipe] t0
-            # walker.write @
+            found-exports.outputs.true[pipe] t0
+            # walker.push @
             root = Passthrough.create!
             root[pipe] walker
             root.map (node) ->
                 replacer.sync!
-            root.write @
+            root.push @
             
             # console.dir @, depth: 6
             

@@ -1,7 +1,7 @@
 require! {
     \./symbols : { parent, type }
 }
-Node = module.exports = Object.create null
+Node = module.exports = ^^null
 Node <<<
     (Symbol.has-instance): -> Object.is-prototype-of ...
     (type): \Node
