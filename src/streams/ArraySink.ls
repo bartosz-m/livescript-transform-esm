@@ -6,8 +6,8 @@ ArraySink = ^^Sink
     module.exports = ..
 ArraySink <<<
     init: !->
-        Sink.init.call @, on-data: @push-value
+        Sink.init ...
         @value = []
         
-    push-value: (x) !->
+    on-data: (x) !->
         @value.push x

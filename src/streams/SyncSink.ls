@@ -1,5 +1,5 @@
 require! {
-    \./symbols : { pipe }
+    \./symbols : { pipe, push }
     \./Sink
     \./ArraySink
 }
@@ -7,7 +7,8 @@ require! {
 SyncSink = module.exports = ^^Sink
 SyncSink <<<
     on-data: !->
-    push: (element) ->
+    (push): ({value}) ->
+        element = value
         if Array.is-array element
             for k,v in element
                 if v?[pipe]?
@@ -20,4 +21,4 @@ SyncSink <<<
                     array-sink = ArraySink.create!
                         v[pipe] ..
                         element[k] = ..value
-        Sink.push.call @, element
+        Sink[push] ...

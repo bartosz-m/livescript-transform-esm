@@ -10,8 +10,80 @@ require! {
     \./streams : { ArraySink, CascadeStream, ComposedStream, DuplexStream, FilterStream, ForkStream, MergeStream, Sink, SyncSink, TransformStream }
 }
 
-Passthrough = DuplexStream
-Transformator = TransformStream
+BooleanSpliter = ^^ForkStream
+BooleanSpliter <<<
+    routes: [true, false]
+    init: (arg) !->
+        ForkStream.init.call @, arg with {route: arg.check}
+
+Helper =
+    filter: (...filters) ->
+        streams = filters.map ~> FilterStream.create filter: it
+        CascadeStream.create { streams }
+            @[pipe] ..
+        
+    map: (...transforms) ->
+        if transforms.length == 1
+            TransformStream.create { transform: transforms.0 }
+                @[pipe] ..
+        else
+            streams = transforms.map ~> TransformStream.create transform: it
+            CascadeStream.create { streams }
+                @[pipe] ..
+    
+    merge: (...streams) ->
+        MergeStream.create streams: [@, ...streams]
+        
+    series: (...streams) ->
+        CascadeStream.create { streams }
+            @[pipe] ..
+            
+    sync: !-> @to-array!
+        
+    to-array: ->
+        result = ArraySink.create!
+            @[pipe] ..
+        result.value
+            
+for Type in [CascadeStream, ComposedStream, DuplexStream, TransformStream]
+    Type <<< Helper
+
+# tests
+do !->
+    input = [1 2 3 4 5]
+    stream = DuplexStream.create!
+    output = stream.to-array!
+    input.for-each stream~push
+    assert Array.is-array output, 'output is array'
+    assert.deep-equal output, input
+do !->
+    input = [1 2 3 4 5]
+    stream = DuplexStream.create!
+    tstream = stream.map (* 2)
+    output = tstream.to-array!
+    input.for-each stream~push
+    assert Array.is-array output, 'output is array'
+    assert.deep-equal output, [ 2 4 6 8 10 ]
+
+do !->
+    input = [1 2 3 4 5]
+    stream = DuplexStream.create!
+    tstream = stream.filter -> it % 2 == 0
+    output = tstream.to-array!
+    input.for-each stream~push
+    assert Array.is-array output, 'output is array'
+    assert.deep-equal output, [ 2 4 ]    
+
+do !->
+    input = [1 2 3 4 5]
+    stream = DuplexStream.create!
+    spliter = BooleanSpliter.create check: -> it % 2 == 0
+    stream[pipe] spliter
+    output = spliter.outputs.true.to-array!
+    input.for-each stream~push
+    assert Array.is-array output, 'output is array'
+    assert.deep-equal output, [ 2 4 ]    
+    
 
 
 sn = (node = {}, ...parts) ->
@@ -204,43 +276,7 @@ assert DefaultExport instanceof Export
 assert DefaultExport instanceof Node
 
 
-BooleanSpliter = ^^ForkStream
-BooleanSpliter <<<
-    routes: [true, false]
-    init: (arg) !->
-        ForkStream.init.call @, arg with {route: arg.check}
 
-Helper =
-    filter: (...filters) ->
-        streams = filters.map ~> FilterStream.create filter: it
-        CascadeStream.create { streams }
-            @[pipe] ..
-        
-    map: (...transforms) ->
-        if transforms.length == 1
-            Transformator.create { transform: transforms.0 }
-                @[pipe] ..
-        else
-            streams = transforms.map ~> Transformator.create transform: it
-            CascadeStream.create { streams }
-                @[pipe] ..
-    
-    merge: (...streams) ->
-        MergeStream.create streams: [@, ...streams]
-        
-    series: (...streams) ->
-        CascadeStream.create { streams }
-            @[pipe] ..
-            
-    sync: !-> @to-array!
-        
-    to-array: ->
-        result = ArraySink.create!
-            @[pipe] ..
-        result.value
-            
-for Type in [CascadeStream, ComposedStream, Passthrough, Transformator]
-    Type <<< Helper
 
 
 as-array = ->
@@ -261,7 +297,7 @@ replace-nodes = (to-replace) !->
 
         
 insert-export-nodes = ->
-    Transformator.create transform: (node) -> as-array line-to-export node
+    TransformStream.create transform: (node) -> as-array line-to-export node
 
 expand-array-exports = ->
     if-array-exports = BooleanSpliter.create check: (.local[type] == \Arr)
@@ -303,7 +339,7 @@ enable-literal-exports = ->
         or (it.local?[type] == \Fun and not it.local.name?)
         or (it.local?[type] == \Class and not it.local.name?)
     
-    create-temporary-variable = Transformator.create!
+    create-temporary-variable = TransformStream.create!
         ..transform = (node) ->
             tmp = TemporarVariable.create name: \export
             assign = TemporarAssigment.create left: tmp, right: node.local
@@ -321,7 +357,7 @@ enable-anonymous-function-exports = ->
     if-literal-export = BooleanSpliter.create check: ->
         it.local?[type] == \Fun and it.local.name?
     
-    create-temporary-variable = Transformator.create!
+    create-temporary-variable = TransformStream.create!
         ..transform = (node) ->
             [node.local, Export.create local: Identifier.create node.local{name}]
     
@@ -337,7 +373,7 @@ enable-object-exports = (livescript) ->
     if-object-export = BooleanSpliter.create check: ->
         it.local?[type] == \Obj
     
-    expand-object-exports = Transformator.create!
+    expand-object-exports = TransformStream.create!
         ..transform = (node) ->
             {items} = node.local
             items.map ({key,val}) -> Export.create local: val, alias: key
@@ -353,7 +389,7 @@ enable-object-exports = (livescript) ->
 enable-assign-exports = ->
     if-assign-exports = BooleanSpliter.create check: (.local?[type] == \Assign)
     
-    extract-assigns = Transformator.create!
+    extract-assigns = TransformStream.create!
         ..transform = (node) ->
             assign = node.local
             [assign, Export.create local: assign.left]
@@ -367,37 +403,37 @@ enable-assign-exports = ->
     ComposedStream.create input: if-assign-exports, output: transformed
 
 stream-object-entries = (object) ->
-    result = Passthrough.create!
+    result = DuplexStream.create!
     for own k,v of object
         result.push [k,v]
     result
 
 stream-object-values = (object) ->
-    result = Passthrough.create!
+    result = DuplexStream.create!
     for own k,v of object
         result.push v
     result
 
 every-ast-node = ->
-    walker = Transformator.create transform: (node) ->
-        let output = Passthrough.create!
+    walker = TransformStream.create transform: (node) ->
+        let output = DuplexStream.create!
             output.push {node,parent: null}
             walk-ast = (node, parent, name, index) !->
                 output.push {node,parent,name,index}
         
-        # console.log \walking node
+            # console.log \walking node
         
             node.traverse-children walk-ast
             output
     walker
     
 assign-parent-return-as-node = ->
-    Transformator.create transform: ->
+    TransformStream.create transform: ->
         it.node[parent] = it.parent
         it.node
 
 assign-type = ->
-    Transformator.create transform: ->
+    TransformStream.create transform: ->
         unless it[type]
             it-prototype = Object.get-prototype-of it
             it-prototype[type] = it@@display-name ? it@@name
@@ -405,14 +441,14 @@ assign-type = ->
         it
 
 add-replace-with-method = ->
-    Transformator.create transform: ->
+    TransformStream.create transform: ->
         unless it.replace-with
             it-prototype = Object.get-prototype-of it
             it-prototype.replace-with = Node.replace-with
         it
 
 add-replace-child-method = ->
-    Transformator.create transform: ->
+    TransformStream.create transform: ->
         unless it.replace-child?
             it-prototype = Object.get-prototype-of it
             if it[type] == \Block
@@ -479,8 +515,8 @@ Plugin = ^^livescript-ast-transform
         original-compile-root = Block::compile-root
         Self = @
         original-cascade-compile = Cascade::compile
-        ast-entries-fixes = Object.values fixes.livescript.ast.entries .map -> Transformator.create transform: it
-        stream = Passthrough.create!
+        ast-entries-fixes = Object.values fixes.livescript.ast.entries .map -> TransformStream.create transform: it
+        stream = DuplexStream.create!
         entries-fixed = stream.map (.ast)
         .map Object.entries .filter (.0 != \plugins)
         .series ...ast-entries-fixes
@@ -519,7 +555,7 @@ Plugin = ^^livescript-ast-transform
             
             filter-exports = BooleanSpliter.create check: -> (.[type] == \Export )
             
-            do-something-with-exports = Transformator.create transform: (export-node) ->
+            do-something-with-exports = TransformStream.create transform: (export-node) ->
                 i = 0
                 first-stream = transformations[i] livescript
                     out-stream = ..
@@ -531,7 +567,7 @@ Plugin = ^^livescript-ast-transform
                 first-stream.push original
             filter-exports.outputs.true[pipe] do-something-with-exports
             
-            t0 = Transformator.create!
+            t0 = TransformStream.create!
                 ..transform = (original) ->
                     inserted-exports = insert-export-nodes!
                     i = 0
@@ -551,7 +587,7 @@ Plugin = ^^livescript-ast-transform
             t0[pipe] replacer
             found-exports.outputs.true[pipe] t0
             # walker.push @
-            root = Passthrough.create!
+            root = DuplexStream.create!
             root[pipe] walker
             root.map (node) ->
                 replacer.sync!

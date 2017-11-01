@@ -1,6 +1,7 @@
 require! {
     \../components/core : { Creatable }
     \../composition : { import-properties }
+    \./symbols : { push }
     \./DuplexStream
 }
 
@@ -18,5 +19,5 @@ ForkStream <<<
     
     route: ->  throw Error "You need to implement route method youreself"
     
-    push: ->
-        @outputs[@route it].push it
+    (push): ->
+        @outputs[@route it.value][push] it

@@ -1,5 +1,6 @@
 require! {
     \../composition : { import-properties }
+    \./symbols : { push }
     \./DuplexStream
 }
 
@@ -11,6 +12,5 @@ FilterStream <<<
         
     filter: ->  throw Error "You need to implement filter method youreself"
     
-    push: ->
-        DuplexStream.push ... if @filter it
-            
+    (push): !->
+        DuplexStream[push] ... if @filter it.value

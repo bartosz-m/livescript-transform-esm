@@ -1,7 +1,7 @@
 require! {
     \../components/core/Creatable
     \../composition : { import-properties }
-    \./symbols : { pipe }
+    \./symbols : { pipe, push }
 }
 
 ComposedStream = module.exports = ^^null
@@ -13,6 +13,8 @@ ComposedStream <<<
         unless @input? or @output
             throw Error "ComposedStream requires both input and output"
     
-    push: !-> @input.push it
+    push: !-> @input.push value: it
+    
+    (push): !-> @input[push] it
     
     (pipe): -> @output[pipe] it

@@ -17,10 +17,10 @@ TransformStream <<<
     flush: !->
         for element in @buffer
             @debug? \flushing, element
-            if element[pipe]?
-                element[pipe] @
+            if element.value[pipe]?
+                element.value[pipe] @
             else                
-                transformed = @transform element
+                transformed = @transform element.value
                 # unwrapping streams
                 if transformed?[pipe]?
                     for output in @outputs
@@ -28,9 +28,9 @@ TransformStream <<<
                 # flattening arrays
                 else if Array.is-array transformed # using length? can fail
                     for e in transformed
-                        @[send-to-outputs] e
+                        @[send-to-outputs] value: e
                 else
-                    @[send-to-outputs] transformed
+                    @[send-to-outputs] value: transformed
         @buffer = []
               
     transform: (x) ->

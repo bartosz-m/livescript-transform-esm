@@ -1,14 +1,14 @@
 require! {
-    \../symbols : { pipe, send-to-outputs }
+    \../symbols : { pipe, push, send-to-outputs }
 }
 
 Readable = module.exports = 
     init: !->
         @outputs = []
         
-    (send-to-outputs): (something, meta-data) ->
+    (send-to-outputs): (something) ->
         for output in @outputs
-            output.push something, meta-data
+            output[push] something
             
     (pipe): (output) ->
         @outputs.push output
