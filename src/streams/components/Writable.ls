@@ -6,7 +6,7 @@ Writable = module.exports =
     init: !->
         
     (send): !->
-        @output[send] it
+        @output[push] it
       
     push: (value) !->
         @[push] {value}

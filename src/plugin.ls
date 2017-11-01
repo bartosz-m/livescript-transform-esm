@@ -483,11 +483,11 @@ fixes =
 util =
     inject-output: (stream, injected) ->
         output = stream.output
-        # stream.output = injected
+        stream.output = injected
         injected.output = output
 
 LogNode = TransformStream.create transform: ->
-    console.log \log it
+    console.log \log it[type]
     it
 # livescript-ast-transform gives us install and uninstall methods
 # also throws error with more meaningfull message if we forget implement
@@ -534,7 +534,7 @@ Plugin = ^^livescript-ast-transform
         Block::compile-root = (o) ->
             # console.dir @, depth: 6
             walker = every-ast-node!
-            util.inject-output walker, LogNode
+            
             fix0 = assign-parent-return-as-node!
             fix1 = add-replace-with-method!
             fix2 = add-replace-child-method Self.livescript
@@ -544,6 +544,7 @@ Plugin = ^^livescript-ast-transform
             fix2[pipe] fix3
             fix-input = fix0
             fix-output = fix3
+            util.inject-output fix-input, LogNode
             walker[pipe] fix-input
             
             # fixed-nodes[pipe] sink

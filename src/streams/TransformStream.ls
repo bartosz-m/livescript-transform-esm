@@ -14,7 +14,10 @@ TransformStream <<<
         Writable.init ...
         Readable.init ...
         @transform = arg.transform if arg?transform?
-        
+    
+    # because we implemented Bufferable we are ready on the start
+    ready: true
+    
     (send): (element) !->
         if element.value[pipe]?
             element.value[pipe] @
