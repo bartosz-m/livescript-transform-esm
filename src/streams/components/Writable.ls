@@ -1,14 +1,12 @@
 require! {
-    \../symbols : { push }
+    \../symbols : { push, send }
 }
 
 Writable = module.exports =
     init: !->
-        @buffer = []
-    
-    (push): !->
-        @buffer.push it
-        @flush! if @outputs.length > 0
+        
+    (send): !->
+        @output[send] it
       
     push: (value) !->
         @[push] {value}

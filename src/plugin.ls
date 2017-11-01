@@ -480,7 +480,15 @@ fixes =
                         it::replace-with = Node.replace-with
                     it
                       
+util =
+    inject-output: (stream, injected) ->
+        output = stream.output
+        # stream.output = injected
+        injected.output = output
 
+LogNode = TransformStream.create transform: ->
+    console.log \log it
+    it
 # livescript-ast-transform gives us install and uninstall methods
 # also throws error with more meaningfull message if we forget implement
 # 'enable' and 'disable' methods
@@ -520,12 +528,13 @@ Plugin = ^^livescript-ast-transform
         entries-fixed = stream.map (.ast)
         .map Object.entries .filter (.0 != \plugins)
         .series ...ast-entries-fixes
-        .sync!
+        .sync!        
         stream.push @livescript
         Nodelivescript = @livescript
         Block::compile-root = (o) ->
             # console.dir @, depth: 6
             walker = every-ast-node!
+            util.inject-output walker, LogNode
             fix0 = assign-parent-return-as-node!
             fix1 = add-replace-with-method!
             fix2 = add-replace-child-method Self.livescript
