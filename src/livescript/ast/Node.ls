@@ -1,7 +1,13 @@
 require! {
+    \source-map : { SourceNode }
+    \../../components/core : { Creatable }
+    \../../composition : { import-properties }
+    
     \./symbols : { parent, type }
 }
+
 Node = module.exports = ^^null
+    import-properties .., Creatable
 Node <<<
     (Symbol.has-instance): -> Object.is-prototype-of ...
     (type): \Node
@@ -35,3 +41,12 @@ Node <<<
         code = (node <<< tab: o.indent).compile-node o
         if node.temps then for tmp in that then o.scope.free tmp
         code
+        
+    to-source-node: ({parts = []}) ->
+        try
+            result = new SourceNode @line, @column, null, parts
+            result.display-name = @[type]
+            result
+        catch e
+            console.dir parts
+            throw e
