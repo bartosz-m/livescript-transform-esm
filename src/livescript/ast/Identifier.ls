@@ -3,6 +3,8 @@ require! {
     \./symbols : { type }
 }
 
+camelize = (.replace /-[a-z]/ig -> it.char-at 1 .to-upper-case!)
+
 Identifier = module.exports = ^^Node
 Identifier <<<    
     (type): \Identifier
@@ -12,7 +14,7 @@ Identifier <<<
     traverse-children: (visitor, cross-scope-boundary) ->
     
     compile: (o) ->
-        @to-source-node parts: [ @name ]
+        @to-source-node parts: [ camelize @name ]
         
     value:~
         -> @name
