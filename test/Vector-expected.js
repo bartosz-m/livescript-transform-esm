@@ -1,3 +1,4 @@
+var Vector;
 export { Vector as default }
 (function(){
   Vector = {

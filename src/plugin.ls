@@ -42,12 +42,15 @@ TemporarVariable = ^^Node
 TemporarVariable <<<    
     (type): \TemporarVariable
     
-    init: (@{name}) !->
+    init: (@{name,is-export}) !->
       
     traverse-children: (visitor, cross-scope-boundary) ->
     
     compile: (o) ->
+        
         @temporary-name ?= o.scope.temporary @name
+        if @is-export
+            o.scope?variables["#{@temporary-name}."] = 'DONT TOUTCH'
         sn @, @temporary-name
   
 
@@ -155,6 +158,7 @@ ExportRules <<<
         if it[type] == \Export
             for rule in @rules
                 if m = rule.match it
+                    # console.log rule.name
                     result =
                         rule: rule
                         matched: m
@@ -212,18 +216,7 @@ ConvertImports =
         Import.create {all,source}
 
 OriginalImports.append ConvertImports
-
-# ConvertImportsToImportAll = 
-#     name: \ConvertImportsToImportAll
-#     match: ->
-#         if it.all
-#             it.right
-# 
-#     replace: (source) ->
-#         ImportAll.create {source}
-
-# OriginalImports.append ConvertImportsToImportAll
-        
+      
 
 ExtractNamesFromSource =
     name: \ExtractNamesFromSource
@@ -313,7 +306,7 @@ WrapLiteralExports =
             it
     
     replace: (node) ->
-        tmp = TemporarVariable.create name: \export
+        tmp = TemporarVariable.create name: \export, is-export: true
         assign = TemporarAssigment.create left: tmp, right: node.local
         [assign, Export.create local: assign.left, alias: node.alias]
 
@@ -594,12 +587,17 @@ Plugin = ^^livescript-ast-transform
             ast-root = @
             ast-root.filename = o.filename
             expand-engine.process ast-root
+            # console.log ast-root.lines
             second-stage-engine.process ast-root
             result = original-compile-root ...
-            non-default-exports = ast-root.exports.filter -> not it.default
+            non-default-exports = ast-root.exports#.filter -> not it.default
             exports = ast-root.exports.map -> sn it, (it.compile o), '\n'
             imports = ast-root.imports.map -> sn it, (it.compile o), '\n'
-            get-variable-name = -> it.name.value ? it.name.temporary-name ? it.name.name
+            get-variable-name = ->
+                # console.log it
+                # it.local.temporary-name ? it.local.name ? it.name.name
+                it.local.compile {}
+                    # console.log \v ..
             exports-declaration = if non-default-exports.length
             then "var #{non-default-exports.map get-variable-name .join ','};\n"
             else ""

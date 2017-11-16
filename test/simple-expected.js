@@ -17,7 +17,7 @@ export { export6$ }
 export { center }
 export { center2 }
 (function(){
-  var Foo, Vector, export$, export1$, export2$, export3$, export4$, export5$, export6$, Bar;
+  var Bar;
   Foo = 'Foo';
   Vector = 'Vector';
   export$ = 'x';
