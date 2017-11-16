@@ -21,7 +21,9 @@ Identifier <<<
     
     get-default: -> void # assign is using this
     
-    is-assignable: -> true
+    is-assignable: -> true  # assign is using this
+    
+    var-name: -> @name  # assign is using this
     
     unwrap: -> @
     compile-node: ->
