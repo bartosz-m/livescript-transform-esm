@@ -251,7 +251,7 @@ ImportRules.append ExpandObjectImports
 ConvertImportsObjectNamesToPatterns =
     name: \ConvertImportsObjectNamesToPatterns
     match: ->
-        if it.names[type] == \Obj
+        if it.names?[type] == \Obj
             items: it.names.items
             node: it
     replace: ({node,items}) ->
@@ -260,6 +260,26 @@ ConvertImportsObjectNamesToPatterns =
   
 ImportRules.append ConvertImportsObjectNamesToPatterns
   
+extract-name-from-source = ->
+    it
+    |> (.replace /'/gi,'')
+    |> (.split path.sep)
+    |> (.[* - 1])
+    |> path.basename
+
+ExpandArrayImports =
+    name: \ExpandArrayImports
+    match: ->
+        if it.source[type] == \Arr
+            it.source.items
+    replace: (items) ->
+        items.map ->
+            Import.create do
+                names: Identifier.create name: extract-name-from-source it.value
+                source: it
+
+ImportRules.append ExpandArrayImports
+
 ExpandArrayExports =
     name: \ExpandArrayExports
     match: ->
