@@ -6,7 +6,10 @@ require! {
 Export = module.exports = ^^Node
 Export <<<
     (type): \Export
+    
     init: (@{local, alias}) ->
+      
+    children-names: <[ local alias ]>
       
     traverse-children: (visitor, cross-scope-boundary)->
         visitor @local, @, \local
@@ -14,6 +17,11 @@ Export <<<
         @local.traverse-children ...&
         @alias.traverse-children ...& if @alias
         
+    name:~
+        -> @alias ? @local
+        
+    default:~
+        -> @alias?name == \default
     
     compile: (o) ->
         alias =
