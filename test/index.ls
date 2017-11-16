@@ -6,15 +6,8 @@ require! {
     livescript
     \../src
 }
-# 
-# filepath = __dirname + \/simple.ls
-# js-filepath = __dirname + \/simple-expected.js
-# source = fs.read-file-sync filepath, \utf8
-# expected = fs.read-file-sync js-filepath, \utf8 
-# result = livescript.compile source
-# console.log result
-# assert result == expected
 
+failed = 0
 
 test-compilation = ({ls-code,js-code,filename}) !->
     try
@@ -28,9 +21,12 @@ test-compilation = ({ls-code,js-code,filename}) !->
         console.log '##### Error'
         console.error e.message
         console.error e.stack
+        failed++
 
 
 tests = fs.readdir-sync __dirname .filter -> it != \index.ls and it.match /\.ls$/
+
+
 
 for test in tests
     console.log "testing #{test}"
@@ -39,3 +35,6 @@ for test in tests
     ls-code = fs.read-file-sync code-file, \utf8
     js-code = fs.read-file-sync output-file, \utf8
     test-compilation {ls-code, js-code, filename: code-file}
+
+if failed 
+    process.exit 1

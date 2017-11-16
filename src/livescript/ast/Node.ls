@@ -1,7 +1,13 @@
 require! {
+    \source-map : { SourceNode }
+    \../../components/core : { Creatable }
+    \../../composition : { import-properties }
+    
     \./symbols : { parent, type }
 }
+
 Node = module.exports = ^^null
+    import-properties .., Creatable
 Node <<<
     (Symbol.has-instance): -> Object.is-prototype-of ...
     (type): \Node
@@ -9,22 +15,47 @@ Node <<<
     
     terminator: '' # required by Block
     
+    children-names: []
+    
     unfold-soak: ->
     
     unparen: -> @
+    
+    remove: ->
+        unless @[parent]remove-child
+            Type = @[parent][type]
+            throw Error "You need to implement method #{Type}::remove-child youreself"
+        @[parent]remove-child @
     
     rip-name: !-> @name = it
       
     rewrite-shorthand: (o, assign) !->
       
+    each-child: (fn) !->
+        for name in @children-names when child = @[name]
+            fn child
+      
+    get-children: ->
+        children = [] 
+        @each-child !->
+            children.push it
+        children
+      
     replace-child: ->
-        throw Error "You need to implement method Node::replace-child youreself"
+        if type = @[type]
+            throw Error "You need to implement method #{type}::replace-child youreself"
+        else
+            throw Error "You need to implement method ::replace-child youreself"
     
     replace-with: (...nodes) ->
+        unless @[parent]
+            throw Error "#{@[type]} doesn't have parent"
         unless @[parent].replace-child
-            console.log @[parent]
-            throw Error "Node doesn't imlement replace-child method"
+            throw Error "#{@[parent][type]} doesn't imlement replace-child method"
+        for node in nodes
+            node[parent] = @[parent]
         @[parent].replace-child @, ...nodes
+        
       
     compile: (options, level) ->
         o = {} <<< options
@@ -35,3 +66,12 @@ Node <<<
         code = (node <<< tab: o.indent).compile-node o
         if node.temps then for tmp in that then o.scope.free tmp
         code
+        
+    to-source-node: ({parts = []}) ->
+        try
+            result = new SourceNode @line, @column, null, parts
+            result.display-name = @[type]
+            result
+        catch e
+            console.dir parts
+            throw e
