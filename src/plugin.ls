@@ -531,7 +531,11 @@ export-resolver =
         resolved-path = path.resolve cwd, module-path
         unless module-path.0 == '.' or module-path.match /\.js$/
             throw Error "Only local livescript files can be imported to scope"
-        code = fs.read-file-sync resolved-path + '.ls', \utf8
+        ext =
+              if path.extname path.basename resolved-path .length
+              then ''
+              else '.ls'
+        code = fs.read-file-sync (resolved-path + ext), \utf8
         ast-root = @livescript.ast code
         ast-root.filename = resolved-path
         export-resolver-stage0.process ast-root
