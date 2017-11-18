@@ -47,7 +47,6 @@ TemporarVariable <<<
     traverse-children: (visitor, cross-scope-boundary) ->
     
     compile: (o) ->
-        
         @temporary-name ?= o.scope.temporary @name
         if @is-export
             o.scope?variables["#{@temporary-name}."] = 'DONT TOUTCH'
@@ -113,6 +112,17 @@ fixes =
                                 for node in nodes
                                     node[parent] = @
                                 child
+                        else if Class::[type] == \Assign
+                            Class::replace-child = (child, ...nodes) ->
+                                if nodes.length != 1 
+                                    throw new Error "Cannot replace child of assign with #{nodes.length} nodes."
+                                [new-node] = nodes
+                                if @left == child
+                                    @left = new-node
+                                else if @right == child
+                                    @right = new-node
+                                else
+                                  throw new Error "Node is not child of Assign"
                         else
                             Class::replace-child = Node.replace-child
                 add-remove-child-method: (Class) ->
@@ -158,7 +168,6 @@ ExportRules <<<
         if it[type] == \Export
             for rule in @rules
                 if m = rule.match it
-                    # console.log rule.name
                     result =
                         rule: rule
                         matched: m
@@ -268,7 +277,7 @@ ExpandArrayImports =
     replace: (items) ->
         items.map ->
             Import.create do
-                names: Identifier.create name: extract-name-from-source it.value
+                names: Identifier.create imported: true, name: extract-name-from-source it.value
                 source: it
 
 ImportRules.append ExpandArrayImports
@@ -320,7 +329,7 @@ WrapAnonymousFunctionExports =
             fn
     
     replace: (fn) ->
-        [fn, Export.create local: Identifier.create fn{name}]
+        [fn, Export.create local: Identifier.create fn{name}, exported: true]
 
 ExportRules.append WrapAnonymousFunctionExports
 
@@ -342,7 +351,7 @@ SplitAssignExports =
         if(assign = it.local)[type] == \Assign
             {alias:it.alias,assign}
     replace: ({alias, assign}) ->
-        identifier = Identifier.create name: assign.left.value
+        identifier = Identifier.create name: assign.left.value, exported: true
         assign.left = identifier
         [assign, Export.create {local: assign.left, alias}]
 
@@ -468,11 +477,37 @@ MoveImportsToTop =
         for _import in imports
             _import.remove!
         ast-root.imports = imports
+
+identifier-from-var = (some-var) ->
+    Identifier.create name: some-var.value
+        copy-source-location some-var, ..
+
+
+DisableImplicitExportVariableDeclaration =
+    process: (ast-root) !->
+        imports = []
+        exports-names = new Set
+        for e in ast-root.exports when e.local.value
+            exports-names.add e.local.value
+        
+        walk = (node,parent,name,index) !->
+            if node[type] == \Assign
+            and node.left[type] == \Var
+            and exports-names.has node.left.value
+                identifier = identifier-from-var node.left
+                node.left.replace-with identifier
+            # if node[type] == \Var
+            # and exports-names.has node.value
+            #     identifier = identifier-from-var node
+            #     node.replace-with identifier
+        const cross-scope-boundary = false
+        ast-root.traverse-children walk, cross-scope-boundary
   
 second-stage-engine =
     mutators: [
         MoveExportsToTop
         MoveImportsToTop
+        DisableImplicitExportVariableDeclaration
     ]
     process: (ast-root) ->
         for mutator in @mutators
@@ -590,18 +625,20 @@ Plugin = ^^livescript-ast-transform
         Block::compile-root = (o) ->
             ast-root = @
             ast-root.filename = o.filename
+            ast-root.is-root = true
             expand-engine.process ast-root
-            # console.log ast-root.lines
             second-stage-engine.process ast-root
-            result = original-compile-root ...
             non-default-exports = ast-root.exports#.filter -> not it.default
+            
+            
+            result = original-compile-root ...
+            
+            # third-stage can access scope
             exports = ast-root.exports.map -> sn it, (it.compile o), '\n'
             imports = ast-root.imports.map -> sn it, (it.compile o), '\n'
+            
             get-variable-name = ->
-                # console.log it
-                # it.local.temporary-name ? it.local.name ? it.name.name
                 it.local.compile {}
-                    # console.log \v ..
             exports-declaration = if non-default-exports.length
             then "var #{non-default-exports.map get-variable-name .join ','};\n"
             else ""

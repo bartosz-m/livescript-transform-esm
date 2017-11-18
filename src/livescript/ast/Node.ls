@@ -45,6 +45,7 @@ Node <<<
         if type = @[type]
             throw Error "You need to implement method #{type}::replace-child youreself"
         else
+            console.log  @to-string!
             throw Error "You need to implement method ::replace-child youreself"
     
     replace-with: (...nodes) ->

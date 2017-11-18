@@ -1,6 +1,5 @@
-var Foo,Bar,FooBar,fooFunction,barBar,Foo,Vector,PI,MEANING_OF_LIFE,E,export6$,center,center2;
+var Foo,export$,export1$,export2$,export3$,barBar,Foo,Vector,PI,MEANING_OF_LIFE,E,fn,export4$,export5$,center,center2;
 export { Foo }
-export { Foo as default }
 export { export$ as default }
 export { export1$ as Bar }
 export { export2$ as FooBar }
@@ -11,13 +10,13 @@ export { Vector }
 export { PI }
 export { MEANING_OF_LIFE }
 export { E }
-export { export4$ as default }
-export { export5$ as default }
-export { export6$ }
+export { fn }
+export { export4$ }
+export { export5$ }
 export { center }
 export { center2 }
 (function(){
-  var Bar;
+  var Class, BarClass;
   Foo = 'Foo';
   Vector = 'Vector';
   export$ = 'x';
@@ -32,22 +31,23 @@ export { center2 }
   PI = 3.14;
   MEANING_OF_LIFE = 42;
   E = 2.718281828;
-  export4$ = function(){
+  fn = function(){
     return "I'm default";
   };
-  export5$ = (function(){
-    var prototype = constructor.prototype;
-    function constructor(){}
-    constructor.prototype.foo = function(){
+  export4$ = Class = (function(){
+    Class.displayName = 'Class';
+    var prototype = Class.prototype, constructor = Class;
+    function Class(){}
+    Class.prototype.foo = function(){
       return 'bar';
     };
-    return constructor;
+    return Class;
   }());
-  export6$ = Bar = (function(){
-    Bar.displayName = 'Bar';
-    var prototype = Bar.prototype, constructor = Bar;
-    function Bar(){}
-    return Bar;
+  export5$ = BarClass = (function(){
+    BarClass.displayName = 'BarClass';
+    var prototype = BarClass.prototype, constructor = BarClass;
+    function BarClass(){}
+    return BarClass;
   }());
   center = 0;
   center2 = center + 1;

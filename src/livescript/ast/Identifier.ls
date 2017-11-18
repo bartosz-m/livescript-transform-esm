@@ -29,4 +29,4 @@ Identifier <<<
     
     unwrap: -> @
     compile-node: ->
-        @compile!
+        @compile ...&

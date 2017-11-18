@@ -2,7 +2,6 @@ Foo = \Foo
 Vector = \Vector
 
 export Foo
-export default Foo
 
 export
     default: \x
@@ -22,13 +21,13 @@ export const E = 2.718281828
 #         ZeroVector: Zero
 #         VectorZero: Zero
 
-export default -> "I'm default"
+export fn = -> "I'm default"
 
-export default class
+export class Class
     !->
     foo: -> \bar
 
-export class Bar
+export class BarClass
 
 export
     center = 0
