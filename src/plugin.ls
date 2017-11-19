@@ -151,8 +151,8 @@ as-array = ->
     then it
     else [it]
 
-convert-literal-to-string = ->
-    it.value.substring 1, it.value.length - 1
+convert-literal-to-string = -> it.value.substring 1, it.value.length - 1
+camelize = (.replace /-[a-z]/ig -> it.char-at 1 .to-upper-case!)
 
 CascadeRule =
     append: (rule) ->
@@ -243,10 +243,17 @@ ImportRules.append ExtractNamesFromSource
 ExpandObjectImports =
     name: \ExpandObjectImports
     match: ->
-        if it.source[type] == \Obj
+        if it.source?[type] == \Obj
             it.source.items
     replace: (items) ->
-        items.map -> Import.create names: it.val, source: it.key
+        items.map ->
+            Import.create do
+                if it.key
+                    names: it.val
+                    source: it.key ? Identifier.create name: convert-literal-to-string it.val
+                else
+                    names: Identifier.create name: convert-literal-to-string it.val
+                    source: it.val
   
 ImportRules.append ExpandObjectImports
 
