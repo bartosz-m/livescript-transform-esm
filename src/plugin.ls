@@ -474,6 +474,14 @@ MoveExportsToTop =
             _export.remove!
         ast-root.exports = exports
 
+is-expression = ->
+    node = it
+    result = false
+    while (parent-node = node[parent]) and not result
+        result = parent-node[type] in <[ Arr ]>
+        node = parent-node
+    result
+
 MoveImportsToTop =
     process: (ast-root) !->
         imports = []
@@ -482,7 +490,10 @@ MoveImportsToTop =
                 imports.push node
         ast-root.traverse-children walk
         for _import in imports
-            _import.remove!
+            if is-expression _import
+                _import.replace-with Identifier.create _import.names{name}
+            else
+                _import.remove!
         ast-root.imports = imports
 
 identifier-from-var = (some-var) ->

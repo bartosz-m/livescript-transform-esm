@@ -28,7 +28,7 @@ tests = fs.readdir-sync __dirname .filter -> it != \index.ls and it.match /\.ls$
 
 
 
-for test in tests# when test == 'export-assigned-variable.ls'
+for test in tests# when test.match /imports-inside/
     console.log "testing #{test}"
     code-file = path.join __dirname, test
     output-file = code-file.replace /\.ls$/ '-expected.js'
