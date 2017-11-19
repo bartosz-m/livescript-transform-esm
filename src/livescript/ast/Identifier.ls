@@ -14,6 +14,8 @@ Identifier <<<
     traverse-children: (visitor, cross-scope-boundary) ->
     
     compile: (o) ->
+        if -1 != @name.search /\./
+            throw Error "Incorrect identifier '#{@name}'. Identifier cannot have '.' at #{@line}:#{@column} in #{@filename}"
         @to-source-node parts: [ camelize @name ]
         
     value:~
