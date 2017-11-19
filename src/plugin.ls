@@ -42,13 +42,13 @@ TemporarVariable = ^^Node
 TemporarVariable <<<    
     (type): \TemporarVariable
     
-    init: (@{name,is-export}) !->
+    init: (@{name,is-export,is-import}) !->
       
     traverse-children: (visitor, cross-scope-boundary) ->
     
     compile: (o) ->
         @temporary-name ?= o.scope.temporary @name
-        if @is-export
+        if @is-export or @is-import
             o.scope?variables["#{@temporary-name}."] = 'DONT TOUTCH'
         sn @, @temporary-name
   
@@ -231,7 +231,8 @@ ExtractNamesFromSource =
     name: \ExtractNamesFromSource
     match: ->
         if not it.names
-        and value = it.source.value
+        and (value = it.source.value)
+        and not is-expression it
             node: it
             names: path.basename value.replace /\'/gi, ''
     replace: ({node,names}) ->
@@ -491,7 +492,9 @@ MoveImportsToTop =
         ast-root.traverse-children walk
         for _import in imports
             if is-expression _import
-                _import.replace-with Identifier.create _import.names{name}
+                names = TemporarVariable.create name: \export, is-import: true
+                _import.replace-with names
+                _import.names = names
             else
                 _import.remove!
         ast-root.imports = imports
