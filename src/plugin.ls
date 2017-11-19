@@ -479,7 +479,9 @@ is-expression = ->
     node = it
     result = false
     while (parent-node = node[parent]) and not result
-        result = parent-node[type] in <[ Arr ]>
+        result = 
+            parent-node[type] in <[ Arr ]>
+            or (parent-node[type] == \Assign and parent-node.right == node)
         node = parent-node
     result
 
