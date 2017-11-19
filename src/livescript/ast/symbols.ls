@@ -1,2 +1,2 @@
-export parent = Symbol \Node::parent
-export type = Symbol \Node::type
+export parent = Symbol.for \parent.Node.ast.livescript.transform-esm
+export type = Symbol.for \type.Node.ast.livescript.transform-esm
