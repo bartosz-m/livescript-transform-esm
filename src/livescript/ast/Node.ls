@@ -6,6 +6,11 @@ require! {
     \./symbols : { parent, type }
 }
 
+debug-name = ->
+    if it[type]
+    then "[#{that}]"
+    else "livescript.ast.#{it@@name}"
+
 Node = module.exports = ^^null
     import-properties .., Creatable
 Node <<<
@@ -64,6 +69,8 @@ Node <<<
         node = @unfold-soak o or this
         # If a statement appears within an expression, wrap it in a closure.
         return node.compile-closure o if o.level and node.is-statement!
+        unless node.compile-node
+            throw Error "Unimplemented method compile-node in #{debug-name node}"
         code = (node <<< tab: o.indent).compile-node o
         if node.temps then for tmp in that then o.scope.free tmp
         code

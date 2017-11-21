@@ -1,4 +1,4 @@
-require! <[ assert source-map livescript-ast-transform livescript ]>
+require! <[ assert source-map livescript-ast-transform ]>
 { SourceNode } = source-map
 { parent, type } = require \./livescript/ast/symbols
 
@@ -15,6 +15,8 @@ require! {
     \./livescript/ast/Node
     \./livescript/ast/ObjectPattern
     \./livescript/ast/Pattern
+    \./livescript/MatchMapCascadeNode
+    \./livescript/ConditionalNode
 }
 
 sn = (node = {}, ...parts) ->
@@ -87,6 +89,8 @@ fixes =
         ast :
             entries:
                 assign-type: ([class-name, _class]) ->
+                    unless _class
+                        throw Error "missing property #{class-name}"
                     if _class::
                         _class::[type] = class-name
                 
@@ -154,6 +158,13 @@ as-array = ->
 convert-literal-to-string = -> it.value.substring 1, it.value.length - 1
 camelize = (.replace /-[a-z]/ig -> it.char-at 1 .to-upper-case!)
 
+
+BaseNode = ^^null
+BaseNode <<< 
+    name: \BaseNode
+    copy: -> ^^@
+    remove: -> throw Error "Unimplemented method remove in #{@name}"
+
 CascadeRule =
     append: (rule) ->
         unless rule.name
@@ -179,9 +190,15 @@ ExportRules <<<
         as-array replacer
 
 ImportRules = ^^CascadeRule
+ImportRules <<< BaseNode
 ImportRules <<<
     name: \Import
     rules: []
+    copy: -> 
+        @rules.filter -> not it.copy?
+        .for-each -> console.log "#{it.name} missing copy"
+        ^^@
+            ..rules = ..rules.map (.copy!)
     match: ->
         if it[type] == Import[type]
             for rule in @rules
@@ -195,6 +212,21 @@ ImportRules <<<
     replace: ({rule,matched}) ->
         replacer = rule.replace matched
         as-array replacer
+    
+    process: ->
+        if matched = @match it
+            @replace matched
+    
+    remove: (rule-or-filter) ->
+        idx = if \Function == typeof! rule-or-filter
+              then @rules.find-index rule-or-filter
+              else @rules.index-of rule-or-filter
+        if idx != -1
+            rule = @rules[idx]
+            @rules.splice idx, 1
+            rule
+        else
+            throw Error "Cannot remove rule - there is none matching"
 
 OriginalImports = ^^CascadeRule
 OriginalImports <<<
@@ -214,20 +246,35 @@ OriginalImports <<<
     replace: ({rule,matched}) ->
         replacer = rule.replace matched
         as-array replacer
+        
+    process: ->
+        if matched = @match it
+            @replace matched
 
-ConvertImports = 
+ConvertImports = ^^BaseNode
+ConvertImports <<<
     name: \ConvertImports
     match: ->
-        source: it.right
-        all: it.all
+        if it[type] == \Import
+        and it.left.value == 'this'
+            source: it.right
+            all: it.all
     
     replace: ({all,source}) ->
         Import.create {all,source}
+        
+    process: ->
+        if matched = @match it
+            @replace matched
+    
+    copy: ->
+        ^^@
 
 OriginalImports.append ConvertImports
       
 
-ExtractNamesFromSource =
+ExtractNamesFromSource = ^^BaseNode
+ExtractNamesFromSource <<<
     name: \ExtractNamesFromSource
     match: ->
         if not it.names
@@ -241,7 +288,8 @@ ExtractNamesFromSource =
   
 ImportRules.append ExtractNamesFromSource
 
-ExpandObjectImports =
+ExpandObjectImports = ^^BaseNode
+ExpandObjectImports <<<
     name: \ExpandObjectImports
     match: ->
         if it.source?[type] == \Obj
@@ -258,7 +306,8 @@ ExpandObjectImports =
   
 ImportRules.append ExpandObjectImports
 
-ConvertImportsObjectNamesToPatterns =
+ConvertImportsObjectNamesToPatterns = ^^BaseNode
+ConvertImportsObjectNamesToPatterns <<<
     name: \ConvertImportsObjectNamesToPatterns
     match: ->
         if it.names?[type] == \Obj
@@ -277,7 +326,8 @@ extract-name-from-source = ->
     |> (.[* - 1])
     |> path.basename
 
-ExpandArrayImports =
+ExpandArrayImports = ^^BaseNode
+ExpandArrayImports <<<
     name: \ExpandArrayImports
     match: ->
         if it.source[type] == \Arr
@@ -290,7 +340,8 @@ ExpandArrayImports =
 
 ImportRules.append ExpandArrayImports
 
-ExpandArrayExports =
+ExpandArrayExports = ^^BaseNode
+ExpandArrayExports <<<
     name: \ExpandArrayExports
     match: ->
         if it.local[type] == \Arr
@@ -300,7 +351,8 @@ ExpandArrayExports =
 
 ExportRules.append ExpandArrayExports
 
-EnableDefaultExports =
+EnableDefaultExports = ^^BaseNode
+EnableDefaultExports <<<
     name: \EnableDefaultExports
     match: ->
         if (cascade = it.local)[type] == \Cascade
@@ -312,7 +364,8 @@ EnableDefaultExports =
 
 ExportRules.append EnableDefaultExports
 
-WrapLiteralExports =
+WrapLiteralExports = ^^BaseNode
+WrapLiteralExports <<<
     name: \WrapLiteralExports
     match: ->
         {local} = it
@@ -329,7 +382,8 @@ WrapLiteralExports =
 
 ExportRules.append WrapLiteralExports
 
-WrapAnonymousFunctionExports =
+WrapAnonymousFunctionExports = ^^BaseNode
+WrapAnonymousFunctionExports <<<
     name: \WrapAnonymousFunctionExports
     match: ->
         if (fn = it.local)[type] == \Fun
@@ -342,7 +396,8 @@ WrapAnonymousFunctionExports =
 ExportRules.append WrapAnonymousFunctionExports
 
 
-ExpandObjectExports =
+ExpandObjectExports = ^^BaseNode
+ExpandObjectExports <<<
     name: \ExpandObjectExports
     match: ->
         if (object = it.local)[type] == \Obj
@@ -353,8 +408,10 @@ ExpandObjectExports =
 ExportRules.append ExpandObjectExports
 
 
-SplitAssignExports =
+SplitAssignExports = ^^BaseNode
+SplitAssignExports <<<
     name: \SplitAssignExports
+    copy: -> ^^@
     match: ->
         if(assign = it.local)[type] == \Assign
             {alias:it.alias,assign}
@@ -362,6 +419,10 @@ SplitAssignExports =
         identifier = Identifier.create name: assign.left.value, exported: true
         assign.left = identifier
         [assign, Export.create {local: assign.left, alias}]
+    
+    process: ->
+        if matched = @match it
+            @replace matched
 
 ExportRules.append SplitAssignExports
 
@@ -376,6 +437,12 @@ InsertExportNodes =
         if lines.length == 0
             throw Error "Empty export at #{cascade.line}:#{cascade.column}"
         lines.map -> Export.create local: it
+    
+    process: (value) ->
+        if matched = @match value
+            @replace matched
+            
+    copy: -> ^^@
 
 AssignParent =
     name: \AssignParent
@@ -400,18 +467,23 @@ AssignFilename =
       node{filename} = node[parent]
       node
 
-ExpandMetaImport =
+ExpandMetaImport = ^^BaseNode
+ExpandMetaImport <<<
     name: \ExpandMetaImport
     match: (node) ->
         if node.all
             node
     
-    replace: (node) ->
+    replace: ({source,filename}: node) ->
         try
-            export-resolver.resolve (convert-literal-to-string node.source), node.filename 
+            unless filename
+                throw Error "Meta-import requires filename property on Import nodes"
+            export-resolver.resolve (convert-literal-to-string source), filename 
         catch
             if e.message.match /no such file/
                 throw Error "Cannot meta-import module #{node.source.value} at #{node.line}:#{node.column} in #{node.filename}\nProbably mispelled module path"
+            else
+                throw e
 
 ImportRules.append ExpandMetaImport
 
@@ -465,6 +537,8 @@ expand-engine
     ..append-rule ImportRules                 
 
 MoveExportsToTop =
+    name: \MoveExportsToTop
+    copy: -> ^^@
     process: (ast-root) !->
         exports = []
         walk = (node,parent,name,index) !->
@@ -486,6 +560,8 @@ is-expression = ->
     result
 
 MoveImportsToTop =
+    name: \MoveImportsToTop
+    copy: -> ^^@
     process: (ast-root) !->
         imports = []
         walk = (node,parent,name,index) !->
@@ -507,6 +583,8 @@ identifier-from-var = (some-var) ->
 
 
 DisableImplicitExportVariableDeclaration =
+    name: \DisableImplicitExportVariableDeclaration
+    copy: -> ^^@
     process: (ast-root) !->
         imports = []
         exports-names = new Set
@@ -594,16 +672,16 @@ export-resolver =
               then ''
               else '.ls'
         code = fs.read-file-sync (resolved-path + ext), \utf8
-        ast-root = @livescript.ast code
-        ast-root.filename = resolved-path
-        export-resolver-stage0.process ast-root
-        second-stage-engine.process ast-root
+        ast-root = @livescript.generate-ast code, filename: resolved-path
+        
         exports = ast-root.exports
         items = exports.map -> Identifier.create name: it.name.value
         Import.create do
             names: ObjectPattern.create {items}
             source: Literal.create value: "'#{module-path}'"
-      
+
+
+
 # livescript-ast-transform gives us install and uninstall methods
 # also throws error with more meaningfull message if we forget implement
 # 'enable' and 'disable' methods
@@ -636,37 +714,36 @@ Plugin = ^^livescript-ast-transform
                 else
                     result.push l
             result
-        { Block } = @livescript.ast
-        original-compile-root = Block::compile-root
-        Self = @
-        for own k,v of @livescript.ast
-            for own ,fix of fixes.livescript.ast.entries
-                fix [k,v]
-            for own ,fix of fixes.livescript.ast.values
-                fix v
         Nodelivescript = @livescript
-        Block::compile-root = (o) ->
-            ast-root = @
-            ast-root.filename = o.filename
-            ast-root.is-root = true
-            expand-engine.process ast-root
-            second-stage-engine.process ast-root
-            non-default-exports = ast-root.exports#.filter -> not it.default
-            
-            
-            result = original-compile-root ...
-            
-            # third-stage can access scope
-            exports = ast-root.exports.map -> sn it, (it.compile o), '\n'
-            imports = ast-root.imports.map -> sn it, (it.compile o), '\n'
-            
-            get-variable-name = ->
-                it.local.compile {}
-            exports-declaration = if non-default-exports.length
-            then "var #{non-default-exports.map get-variable-name .join ','};\n"
-            else ""
-            sn ast-root, ...imports, exports-declaration, ...exports, result
-        original-compile-with-declarations = Block::compile-with-declarations
+        
+        EnableExports = ConditionalNode.copy!
+            ..condition.process = ->
+                  it[type] == \Export
+            ..next = ExportNodes = MatchMapCascadeNode.copy!
+        
+        EnableImports = ConditionalNode.copy!
+            ..name = \Imports
+            ..condition.process = ->
+                  it[type] == Import[type]
+            ..next = ImportRules
+        ExportNodes
+            ..append SplitAssignExports
+            ..append ExpandArrayExports
+            ..append EnableDefaultExports
+            ..append WrapLiteralExports
+            ..append WrapAnonymousFunctionExports
+            ..append ExpandObjectExports
+        @livescript.expand
+            ..append InsertExportNodes
+            ..append ConvertImports
+            ..append EnableExports
+            ..append EnableImports
+        @livescript.postprocess-ast.append MoveExportsToTop
+        @livescript.postprocess-ast.append MoveImportsToTop
+        @livescript.postprocess-ast.append DisableImplicitExportVariableDeclaration
+        simplified-compiler = @livescript.copy!
+            ..expand.rules.find (.name == \Imports) .next.remove (.name == \ExpandMetaImport)
+        export-resolver.livescript = simplified-compiler
         scope-patched = false
 
     ..disable = !->
