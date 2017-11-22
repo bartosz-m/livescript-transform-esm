@@ -22,7 +22,7 @@ AST = ^^null
 original = Symbol \original
 
 for type-name in <[
-    Arr Assign Binary Block Call Cascade Chain Class Fun Import Index Key Literal Obj Prop Splat Unary Util Var
+    Arr Assign Binary Block Call Cascade Chain Class Fun If Import Index Key Literal Obj Parens Prop Splat Unary Util Var
 ]>
     AST[type-name] = 
         (type): type-name
