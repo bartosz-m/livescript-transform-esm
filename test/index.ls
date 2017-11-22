@@ -43,7 +43,7 @@ tests = fs.readdir-sync __dirname .filter -> it != \index.ls and it.match /\.ls$
 
 
 
-for test in tests# when test.match /^symbols/
+for test in tests# when test.match /^ls-compile/
     console.log "testing #{test}"
     code-file = path.join __dirname, test
     output-file = code-file.replace /\.ls$/ '-expected.js'

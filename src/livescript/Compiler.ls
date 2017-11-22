@@ -1,4 +1,5 @@
 require! {
+    \assert
     \source-map : { SourceNode }
     \./Lexer
     \./ast/Node
@@ -19,7 +20,7 @@ sn = (node = {}, ...parts) ->
 
 AST = ^^null
 
-original = Symbol \original
+Prototype = Symbol \Prototype
 
 for type-name in <[
     Arr Assign Binary Block Call Cascade Chain Class Existence For Fun If Import Index Jump Key Literal Obj Parens Prop Return Splat Throw Try Unary Util While Var
@@ -31,7 +32,7 @@ for type-name in <[
             display-name: type-name
         from-livescript-node: ->
             result = ^^it
-                ..[original] = it
+                ..[Prototype] = it
             for own k,v of @
                 result[k] = v
             result[type] = @[type]
@@ -40,7 +41,7 @@ for type-name in <[
 super-compile = JsNode.copy!
     ..name = \SuperCompile
     ..js-function = ->
-        @[original]compile-root ...
+        @[Prototype]compile-root ...
 
 BlockCompile = SeriesNode.copy!
     ..name = \compile.Block
@@ -76,7 +77,7 @@ AST.Block
   ..xcompile = wrap-node BlockCompile
   ..compile-root = (o) ->
       
-      result = @[original]compile-root ...
+      result = @[Prototype]compile-root ...
       exports = @exports.map -> sn it, (it.compile o), '\n'
       # imports = ast-root.imports.map -> sn it, (it.compile o), '\n'
       result
@@ -155,26 +156,24 @@ Compiler <<<
         map = new Map
         new-root = @ast.Block.from-livescript-node ast-root
         map.set ast-root, new-root
+        ast-root <<< @ast.Block
+            ..[Prototype] = Object.get-prototype-of ..
+            ..[type] = @ast.Block[type]
         walk = (node,parent-node,name,index) !~>
             if NodeType = @ast[node@@name]
                 unless NodeType.from-livescript-node?
                     throw Error "#{NodeType[type]} doesn't have method from-livescript-node"
-                new-node = NodeType.from-livescript-node node
+                node <<< NodeType
+                    ..[type] = NodeType[type]
+                    ..[parent] = parent-node
                     ..filename = options.filename
-                map.set node, new-node
-                converted-parent = map.get parent-node
-                unless converted-parent[name]
-                    throw Error "Node doesn't have child #{name}"
-                new-node[parent] = converted-parent
-                if index?
-                    converted-parent[name][index] = new-node
-                else
-                    converted-parent[name] = new-node
+                node[Prototype] = Object.get-prototype-of node
             else
                 throw Error "Unimplemented #{node@@name}"
             
         ast-root.traverse-children walk, true
         new-root
+        ast-root
     
     generate-ast: (code, options) ->
         @convert-ast (@livescript.ast @lexer.lex code), options
