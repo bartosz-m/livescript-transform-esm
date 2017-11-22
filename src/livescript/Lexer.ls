@@ -1,5 +1,5 @@
-Lexer = ^^null
-    module.exports = ..
+# TODO: convert tokenize method to Node 
+Lexer = module.exports = ^^null
 Lexer <<<
     init: ({@livescript}) !->
       
@@ -7,5 +7,8 @@ Lexer <<<
         ^^@
             ..init ...&
     
-    tokenize: ->
-        @livescript.lexer.tokenize
+    lex: (code, options) -> @tokenize code || '' options || {}
+    
+    tokenize: -> @livescript.lexer.tokenize ...&
+    
+    copy: -> ^^@

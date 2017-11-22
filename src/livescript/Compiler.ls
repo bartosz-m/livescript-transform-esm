@@ -17,22 +17,11 @@ sn = (node = {}, ...parts) ->
         console.dir parts
         throw e
 
-copy = (v) ->
-    type = typeof! v
-    if type == \Function
-        result = -> v ...
-        result
-            ..prototype = ^^v.prototype
-    else if type == \Object
-        ^^v
-    else if type == \Array
-        Array.from v
-
 AST = ^^null
 
 original = Symbol \original
 
-for type-name in <[ Arr Assign Binary Block Call Cascade Chain Class Fun Import Index Key Literal Obj Prop Var ]>
+for type-name in <[ Arr Assign Binary Block Call Cascade Chain Class Fun Import Index Key Literal Obj Prop Util Var ]>
     AST[type-name] = 
         (type): type-name
         constructor:
@@ -132,11 +121,11 @@ for k, NodeType of AST
     for k,v of Node{get-children, replace-with}
         NodeType[k] ?= v
 
-
 Compiler = ^^null
     module.exports = ..
 Compiler <<<
     lexer: ^^null
+    
     init: ({@livescript}) !->
         @lexer = Lexer.create {@livescript}
         @ast = AST
@@ -145,6 +134,10 @@ Compiler <<<
             ..name = 'PostprocessAst'
         @postprocess-generated-code = SeriesNode.copy!
             ..name = 'PostprocessGeneratedCode'
+    
+    nodes-names: <[
+        lexer expand postprocessAst postprocessGeneratedCode
+    ]>
         
     create: ->
         ^^@
@@ -152,9 +145,9 @@ Compiler <<<
             
     copy: ->
         ^^@
-            ..expand = ..expand.copy!
-            ..postprocess-ast = ..postprocess-ast.copy!
-            ..postprocess-generated-code = ..postprocess-generated-code.copy!
+            ..nodes-names = Array.from ..nodes-names
+            for name in ..nodes-names
+                ..[name] = ..[name].copy!
     
     convert-ast: (ast-root, options) ->
         map = new Map
@@ -182,7 +175,7 @@ Compiler <<<
         new-root
     
     generate-ast: (code, options) ->
-        @convert-ast (@livescript.ast code, options), options
+        @convert-ast (@livescript.ast @lexer.lex code), options
             .. <<< options{filename}
             @expand.process ..
             @postprocess-ast.process ..

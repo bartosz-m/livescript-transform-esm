@@ -4,11 +4,12 @@ require! {
     path
     \diff-lines
     livescript
+    \livescript/lib/lexer
     \../src/plugin
     \../src/livescript/Compiler
 }
 
-
+livescript.lexer = lexer
 compiler = Compiler.create {livescript}
 plugin.install compiler
 
