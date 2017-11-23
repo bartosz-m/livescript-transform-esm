@@ -78,5 +78,4 @@ class SourceNode extends source-map.SourceNode
         gen-for-node(this)
         {code: code, map: gen, debug: debug-output}
     
-    @from-source-node = ->
-        it with @{replace,set-file, to-string-with-source-map}
+    @from-source-node = -> it with @prototype

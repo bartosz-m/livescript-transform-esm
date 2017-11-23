@@ -184,7 +184,7 @@ Compiler <<<
     # livescript compatible signature
     compile: (code, options = {}) ->
         ast-root = @generate-ast code, options
-        output = ast-root.xcompile options
+        output = SourceNode.from-source-node ast-root.xcompile options
         output.set-file options.filename
         @postprocess-generated-code.process output
         if options.map
