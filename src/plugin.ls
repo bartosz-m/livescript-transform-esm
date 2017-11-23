@@ -480,7 +480,7 @@ is-expression = ->
 ReplaceImportWithTemporarVariable = BaseNode with
     name: \ReplaceImportWithTemporarVariable
     process: (_import) ->
-        names = TemporarVariable.create name: \export, is-import: true
+        names = TemporarVariable.create name: \import, is-import: true
         _import.replace-with names
         _import.names = names
 

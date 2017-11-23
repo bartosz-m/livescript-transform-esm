@@ -23,7 +23,7 @@ AST = ^^null
 Prototype = Symbol \Prototype
 
 for type-name in <[
-    Arr Assign Binary Block Call Cascade Chain Class Existence For Fun If Import Index Jump Key Literal Obj Parens Prop Require Return Splat Throw Try Unary Util While Var Yield
+    Arr Assign Binary Block Call Cascade Chain Class Existence For Fun If Import Index Jump Key Literal Obj Parens Prop Require Return Splat Super Throw Try Unary Util While Var Yield
 ]>
     AST[type-name] = 
         (type): type-name
