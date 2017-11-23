@@ -10,7 +10,7 @@ class SourceNode extends source-map.SourceNode
     replace: (...args) ->
         new SourceNode @line, @column, @source, [..replace(...args) for @children], @name
     
-    set-file = (filename) ->
+    set-file: (filename) ->
         @source = filename
         for child in @children when child instanceof source-map.SourceNode
             child.set-file filename
