@@ -1,5 +1,5 @@
 require! {
-    \source-map : { SourceNode }
+    \../SourceNode
     \../../components/core : { Creatable }
     \../../composition : { import-properties }
     

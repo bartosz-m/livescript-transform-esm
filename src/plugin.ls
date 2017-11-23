@@ -1,4 +1,4 @@
-require! <[ assert source-map livescript-ast-transform ]>
+require! <[ assert livescript-ast-transform ]>
 { parent, type } = require \./livescript/ast/symbols
 
 require! {

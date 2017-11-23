@@ -1,6 +1,6 @@
 require! {
     \assert
-    \source-map : { SourceNode }
+    \./SourceNode
     \./Lexer
     \./ast/Node
     \./ast/symbols : {parent, type}
