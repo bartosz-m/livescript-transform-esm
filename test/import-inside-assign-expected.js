@@ -1,8 +1,8 @@
 import lsCompile from './ls-compile';
-import export$ from '../compiler.config.ls';
+import import$ from '../compiler.config.ls';
 (function(){
   var x$;
   x$ = lsCompile;
   x$.watch = false;
-  x$.config = export$;
+  x$.config = import$;
 }).call(this);
