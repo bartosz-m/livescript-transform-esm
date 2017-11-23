@@ -12,7 +12,7 @@ class SourceNode extends source-map.SourceNode
     
     set-file = (filename) ->
         @source = filename
-        for child in @children when child instanceof SourceNode
+        for child in @children when child instanceof source-map.SourceNode
             child.set-file filename
 
     to-string-with-source-map: (...args) ->
@@ -26,7 +26,7 @@ class SourceNode extends source-map.SourceNode
         debug-indent-str = '  '
 
         gen-for-node = (node) ->
-            if node instanceof SourceNode
+            if node instanceof source-map.SourceNode
                 debug-output += debug-indent + node.display-name
                 # Block nodes should essentially "clear out" any effects
                 # from parent nodes, so always add them to the stack
