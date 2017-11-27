@@ -1,5 +1,5 @@
-var lsCompile = require('./ls-compile');
-var import$ = require('../compiler.config.ls');
+import lsCompile from './ls-compile';
+import import$ from '../compiler.config.ls';
 (function(){
   var x$;
   x$ = lsCompile;

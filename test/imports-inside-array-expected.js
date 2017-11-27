@@ -1,13 +1,12 @@
-import import$ from 'livescript-transform-object-create';
-import import1$ from 'livescript-transform-esm';
-import import2$ from 'livescript-transform-implicit-async';
-import import3$ from 'livescript-transform-object-create/lib/plugin';
-import import4$ from 'livescript-transform-esm/lib/plugin';
-import import5$ from 'livescript-transform-implicit-async/lib/plugin';
-var config;
-export { config as default }
+var import$ = require('livescript-transform-object-create');
+var import1$ = require('livescript-transform-esm');
+var import2$ = require('livescript-transform-implicit-async');
+var import3$ = require('livescript-transform-object-create/lib/plugin');
+var import4$ = require('livescript-transform-esm/lib/plugin');
+var import5$ = require('livescript-transform-implicit-async/lib/plugin');
 (function(){
-  config = {
+  var config;
+  exports.default = config = {
     plugins: [import$, import1$, import2$, import3$, import4$, import5$]
   };
 }).call(this);

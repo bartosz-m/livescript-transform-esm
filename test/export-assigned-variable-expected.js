@@ -1,5 +1,5 @@
-var compiler;
-export { compiler as default }
 (function(){
+  var compiler;
   compiler = {};
+  exports.default = compiler;
 }).call(this);

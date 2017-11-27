@@ -1,6 +1,6 @@
-import Vector from './modules/Vector';
-import { PI, E } from './modules/Math';
-import { Bar, Foo } from './modules/foo';
+var Vector = require('./modules/Vector');
+var { PI, E } = require('./modules/Math');
+var { Bar, Foo } = require('./modules/foo');
 (function(){
 
 }).call(this);

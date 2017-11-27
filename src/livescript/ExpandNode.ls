@@ -1,3 +1,6 @@
+require! {
+    \../nodes/symbols : {copy}
+}
 as-array = ->
     if Array.is-array it
     then it
@@ -26,7 +29,7 @@ copy-source-location = (source, target) !->
 ExpandNode = module.exports =  ^^null
 ExpandNode <<<
     append: (rule) !->
-        unless rule.copy
+        unless rule[copy]
             throw Error "Creating node #{rule.name ? ''} without copy method is realy bad practice"
         unless rule.name
             throw new Error "Adding rule without a name is realy bad practice"
@@ -46,15 +49,15 @@ ExpandNode <<<
       
     rules: [
     ]
-    process: (ast-root) !->
+    exec: (ast-root) !->
         changed = false
-        to-process = [ast-root]
-        while to-process.length
+        to-exec = [ast-root]
+        while to-exec.length
             changed = false
-            processing = to-process
-            to-process = []
-            for node in processing
-                for rule in @rules when mapped = rule.process node
+            execing = to-exec
+            to-exec = []
+            for node in execing
+                for rule in @rules when mapped = rule.exec node
                     try
                         new-nodes = as-array mapped
                         unless new-nodes.0
@@ -70,10 +73,10 @@ ExpandNode <<<
                         e.message = "During #{rule.name} #{e.message}"
                         throw e
             if changed
-                to-process.push ast-root
+                to-exec.push ast-root
             else
-                to-process.push ...flatten processing.map ->
+                to-exec.push ...flatten execing.map ->
                     it.get-children!
-    copy: ->
+    (copy): ->
         ^^@
-            ..rules = @rules.map (.copy!)
+            ..rules = @rules.map (.[copy]!)

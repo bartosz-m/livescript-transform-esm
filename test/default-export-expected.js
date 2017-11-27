@@ -1,7 +1,5 @@
-var export$;
-export { export$ as default }
 (function(){
-  export$ = function(){
+  exports.default = function(){
     return console.log('ok');
   };
 }).call(this);

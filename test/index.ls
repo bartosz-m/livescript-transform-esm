@@ -5,19 +5,23 @@ require! {
     \diff-lines
     livescript
     \livescript/lib/lexer
+    # \../src/register
     \../src/plugin
     \../src/livescript/Compiler
 }
 
-livescript.lexer = lexer
-compiler = Compiler.create {livescript}
-plugin.install compiler
+esm-compiler = Compiler.create livescript: livescript with {lexer}
+    plugin.install ..
+
+cjs-compiler = Compiler.create livescript: livescript with {lexer}
+    plugin.install .., format: \cjs
+
+assert esm-compiler.ast.Block != cjs-compiler.ast.Block
 
 failed = 0
 
-test-compilation = ({ls-code,js-code,filename}) !->
+test-compilation = ({compiler, ls-code,js-code,filename}) !->
     try
-        # compiler = livescript
         generated-output = compiler.compile ls-code, {filename, -map, -header}
         if generated-output != js-code
             unless generated-output
@@ -43,13 +47,22 @@ tests = fs.readdir-sync __dirname .filter -> it != \index.ls and it.match /\.ls$
 
 
 
-for test in tests# when test.match /^ls-compile/
+for test in tests# when test.match /^simple\.ls/
     console.log "testing #{test}"
-    code-file = path.join __dirname, test
-    output-file = code-file.replace /\.ls$/ '-expected.js'
-    ls-code = fs.read-file-sync code-file, \utf8
-    js-code = fs.read-file-sync output-file, \utf8
-    test-compilation {ls-code, js-code, filename: code-file}
+    try
+        code-file = path.join __dirname, test
+        output-file = code-file.replace /\.ls$/ '-expected.js'
+        module-file = code-file.replace /\.ls$/ '-expected.mjs'
+        ls-code = fs.read-file-sync code-file, \utf8
+        cjs-code = fs.read-file-sync output-file, \utf8
+        ems-code = fs.read-file-sync module-file, \utf8
+        test-compilation {compiler: esm-compiler, ls-code, js-code:ems-code, filename: code-file}
+        test-compilation {compiler: cjs-compiler, ls-code, js-code:cjs-code, filename: code-file}
+    catch
+        if m = e.message.match /ENOENT\: no such file or directory, open '([^']+)'/
+            fs.write-file m.1, ""
+        failed++
+        console.log e.stack
 
 if failed 
     process.exit 1

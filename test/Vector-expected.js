@@ -1,7 +1,6 @@
-var Vector;
-export { Vector as default }
 (function(){
-  Vector = {
+  var Vector;
+  exports.default = Vector = {
     x: 0,
     y: 0
   };

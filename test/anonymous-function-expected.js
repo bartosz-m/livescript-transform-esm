@@ -1,9 +1,7 @@
-var resolve,export$;
-export { resolve }
-export { export$ as default }
 (function(){
-  resolve = function(specifier, parentModuleURL, defaultResolver){};
-  export$ = function(){
+  var resolve;
+  exports.resolve = resolve = function(specifier, parentModuleURL, defaultResolver){};
+  exports.default = function(){
     return "I'm default";
   };
 }).call(this);

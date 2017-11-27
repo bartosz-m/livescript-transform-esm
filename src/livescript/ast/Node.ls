@@ -1,7 +1,11 @@
 require! {
+    assert
     \../SourceNode
     \../../components/core : { Creatable }
     \../../composition : { import-properties }
+    
+    \../../nodes/ObjectNode
+    \../../nodes/symbols : {copy,as-node}
     
     \./symbols : { parent, type }
 }
@@ -11,9 +15,16 @@ debug-name = ->
     then "[#{that}]"
     else "livescript.ast.#{it@@name}"
 
-Node = module.exports = ^^null
-    import-properties .., Creatable
-Node <<<
+NodeNode = ObjectNode[copy]!
+NodeNode.import-enumerable Creatable 
+
+Node = module.exports = NodeNode.properties
+assert Node.create
+assert.equal \Function typeof! Node.create
+assert.equal Node[as-node], NodeNode
+    # import-properties .., Creatable
+NodeNode.import-enumerable do
+# Node <<<
     (Symbol.has-instance): -> Object.is-prototype-of ...
     (type): \Node
     is-statement: -> false
@@ -77,6 +88,9 @@ Node <<<
         
     to-source-node: ({parts = []}) ->
         try
+            parts = parts.map ->
+                if \String == typeof! it then "#{it}"
+                else it
             result = new SourceNode @line, @column, null, parts
             result.display-name = @[type]
             result

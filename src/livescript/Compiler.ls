@@ -4,61 +4,31 @@ require! {
     \./Lexer
     \./ast/Node
     \./ast/symbols : {parent, type}
-    \./JsNode
+    \../nodes/ObjectNode
+    \../nodes/JsNode
+    \../nodes/SeriesNode
+    \../nodes/symbols : node-symbols
     \./ExpandNode
-    \./SeriesNode
 }
 
-sn = (node = {}, ...parts) ->
-    try
-        result = new SourceNode node.line, node.column, null, parts
-        result.display-name = node[type]
-        result
-    catch e
-        console.dir parts
-        throw e
 
-AST = ^^null
+
+copy = node-symbols.copy
+
+js = node-symbols.js
+
+AST = ObjectNode[copy]!properties
 
 Prototype = Symbol \Prototype
-
-for type-name in <[
-    Arr Assign Binary Block Call Cascade Chain Class Existence For Fun If Import Index Jump Key Literal Obj Parens Prop Require Return Splat Super Throw Try Unary Util While Var Yield
-]>
-    AST[type-name] = 
-        (type): type-name
-        constructor:
-            name: type-name
-            display-name: type-name
-        from-livescript-node: ->
-            result = ^^it
-                ..[Prototype] = it
-            for own k,v of @
-                result[k] = v
-            result[type] = @[type]
-            result
 
 super-compile = JsNode.copy!
     ..name = \SuperCompile
     ..js-function = ->
         @[Prototype]compile-root ...
 
-BlockCompile = SeriesNode.copy!
+BlockCompile = SeriesNode[copy]!
     ..name = \compile.Block
-    ..append super-compile.copy!
-
-AddExportsDeclarations = JsNode.copy!
-    ..name = \AddExportsDeclarations
-    ..js-function = (result) ->
-        exports = @exports.map -> sn it, (it.compile {}), '\n'
-        imports = @imports.map -> sn it, (it.compile {}), '\n'
-        get-variable-name = -> it.local.compile {}
-        exports-declaration = if exports.length
-        then "var #{@exports.map get-variable-name .join ','};\n"
-        else ""
-        sn @, ...imports, exports-declaration, ...exports, result
-
-BlockCompile.append AddExportsDeclarations
+    ..append super-compile[copy]!
 
 wrap-node = (mapper) ->
     wrapped = -> mapper ...
@@ -72,75 +42,107 @@ wrap-node = (mapper) ->
                 set: -> @node[k] = it
     wrapped
 
+AST.Block = ObjectNode[copy]!properties
+AST.Assign = ObjectNode[copy]!properties
+
+assert AST.Block != AST.Block[copy]!
+assert AST.Block != AST[copy]!Block
+
+BlockReplaceChild = JsNode.new (child, ...nodes) ->
+    idx = @lines.index-of child
+    unless idx > -1
+        throw Error "Trying to replace node witch is not child of current node"
+    unless nodes.length
+        throw Error "Replace called without nodes"
+    @lines.splice idx, 1, ...nodes
+    for node in nodes
+        node[parent] = @
+    child
+
+BlockRemoveChild = JsNode.new (child) ->
+    idx = @lines.index-of child
+    unless idx > -1
+        throw Error "Trying to replace node witch is not child of current node"
+    @lines.splice idx, 1
+    child
+
 
 AST.Block
-  ..xcompile = wrap-node BlockCompile
-  ..compile-root = (o) ->
-      
-      result = @[Prototype]compile-root ...
-      exports = @exports.map -> sn it, (it.compile o), '\n'
-      # imports = ast-root.imports.map -> sn it, (it.compile o), '\n'
-      result
-      # third-stage can access scope
-      # 
-      non-default-exports = @exports
-      get-variable-name = -> it.local.compile {}
-      exports-declaration = if exports.length
-      then "var #{@exports.map get-variable-name .join ','};\n"
-      else ""
-      sn @, exports-declaration, ...exports, result
-      # result
+  ..Compile = BlockCompile
+  ..replace-child = BlockReplaceChild[js]
     
-  ..replace-child = (child, ...nodes) ->
-      idx = @lines.index-of child
-      unless idx > -1
-          throw Error "Trying to replace node witch is not child of current node"
-      unless nodes.length
-          throw Error "Replace called without nodes"
-      @lines.splice idx, 1, ...nodes
-      for node in nodes
-          node[parent] = @
-      child
-  ..remove-child = (child) ->
-      idx = @lines.index-of child
-      unless idx > -1
-          throw Error "Trying to replace node witch is not child of current node"
-      @lines.splice idx, 1
-      child
+  # ..replace-child = (child, ...nodes) ->
+  #     idx = @lines.index-of child
+  #     unless idx > -1
+  #         throw Error "Trying to replace node witch is not child of current node"
+  #     unless nodes.length
+  #         throw Error "Replace called without nodes"
+  #     @lines.splice idx, 1, ...nodes
+  #     for node in nodes
+  #         node[parent] = @
+  #     child
+  # ..remove-child = (child) ->
+  #     idx = @lines.index-of child
+  #     unless idx > -1
+  #         throw Error "Trying to replace node witch is not child of current node"
+  #     @lines.splice idx, 1
+  #     child
+  ..remove-child = BlockRemoveChild[js]
+
+AssignReplaceChild = JsNode.new (child, ...nodes) ->
+    if nodes.length != 1 
+        throw new Error "Cannot replace child of assign with #{nodes.length} nodes."
+    [new-node] = nodes
+    if @left == child
+        @left = new-node
+    else if @right == child
+        @right = new-node
+    else
+      throw new Error "Node is not child of Assign"
+
+AssignReplaceChild
+    ..name = \AssignReplaceChild
 
 AST.Assign
-    ..replace-child = (child, ...nodes) ->
-        if nodes.length != 1 
-            throw new Error "Cannot replace child of assign with #{nodes.length} nodes."
-        [new-node] = nodes
-        if @left == child
-            @left = new-node
-        else if @right == child
-            @right = new-node
-        else
-          throw new Error "Node is not child of Assign"
+    ..replace-child = AssignReplaceChild[js]
+    # ..replace-child = (child, ...nodes) ->
+    #     if nodes.length != 1 
+    #         throw new Error "Cannot replace child of assign with #{nodes.length} nodes."
+    #     [new-node] = nodes
+    #     if @left == child
+    #         @left = new-node
+    #     else if @right == child
+    #         @right = new-node
+    #     else
+    #       throw new Error "Node is not child of Assign"
 
 for k, NodeType of AST
-    for k,v of Node{get-children, replace-with}
-        NodeType[k] ?= v
+    for k,v of Node{get-children, replace-with,to-source-node}
+        NodeType[k] ?= JsNode.new v .[js]
 
-Compiler = ^^null
+Compiler = ^^ObjectNode
     module.exports = ..
 Compiler <<<
     lexer: ^^null
     
-    init: ({@livescript}) !->
+    init: ({@livescript,lexer}) !->
+        @livescript <<< {lexer} if lexer
         @lexer = Lexer.create {@livescript}
-        @ast = AST
-        @expand = ExpandNode.copy!
+        @ast = AST[copy]!
+        assert @ast.Block != AST.Block
+        # @ast = AST
+        @expand = ExpandNode[copy]!
         @postprocess-ast = SeriesNode.copy!
-            ..name = 'PostprocessAst'
+            ..name = 'postprocessAst'
         @postprocess-generated-code = SeriesNode.copy!
-            ..name = 'PostprocessGeneratedCode'
+            ..name = 'postprocessGeneratedCode'
     
     nodes-names: <[
-        lexer expand postprocessAst postprocessGeneratedCode
+        ast lexer expand postprocessAst postprocessGeneratedCode
     ]>
+    
+    install: (livescript = @livescript) !->
+        @livescript.compile = @~compile
         
     create: ->
         ^^@
@@ -150,45 +152,47 @@ Compiler <<<
         ^^@
             ..nodes-names = Array.from ..nodes-names
             for name in ..nodes-names
-                ..[name] = ..[name].copy!
+                unless ..[name][copy]
+                    throw Error "Compiler.#{name} doesn't have copy method"
+                ..[name] = ..[name][copy]!
     
     convert-ast: (ast-root, options) ->
-        map = new Map
-        new-root = @ast.Block.from-livescript-node ast-root
-        map.set ast-root, new-root
         ast-root <<< @ast.Block
             ..[Prototype] = Object.get-prototype-of ..
             ..[type] = @ast.Block[type]
         walk = (node,parent-node,name,index) !~>
+            node <<< NodeType
+                ..[type] = node@@name
+                ..[parent] = parent-node
+                ..filename = options.filename
+                ..[Prototype] = Object.get-prototype-of ..
+                for k,v of Node{get-children, replace-with,to-source-node}
+                    ..[Prototype][k] ?= v
             if NodeType = @ast[node@@name]
-                unless NodeType.from-livescript-node?
-                    throw Error "#{NodeType[type]} doesn't have method from-livescript-node"
                 node <<< NodeType
-                    ..[type] = NodeType[type]
-                    ..[parent] = parent-node
-                    ..filename = options.filename
-                node[Prototype] = Object.get-prototype-of node
-            else
-                throw Error "Unimplemented #{node@@name}"
             
         ast-root.traverse-children walk, true
-        new-root
         ast-root
     
     generate-ast: (code, options) ->
-        @convert-ast (@livescript.ast @lexer.lex code), options
+        @convert-ast (@livescript.ast @lexer.lex.exec code), options
             .. <<< options{filename}
-            @expand.process ..
-            @postprocess-ast.process ..
+            @expand.exec ..
+            @postprocess-ast.exec ..
 
     # livescript compatible signature
     compile: (code, options = {}) ->
         ast-root = @generate-ast code, options
-        output = SourceNode.from-source-node ast-root.xcompile options
+        output = SourceNode.from-source-node ast-root.Compile.call ast-root, options
         output.set-file options.filename
-        @postprocess-generated-code.process output
-        if options.map
-            result = output.to-string-with-source-map!
+        @postprocess-generated-code.exec output
+        if map = options.map
+            
+            result = output.to-string-with-source-map!                
                 ..ast = ast-root
+                if map is 'embedded'
+                    ..map.set-source-content options.filename, code
+                    ..code += "\n//# sourceMappingURL=data:application/json;base64,#{ new Buffer ..map.to-string! .to-string 'base64' }\n"
+            result
         else
             output.to-string!

@@ -1,5 +1,7 @@
+var export$;
+export { export$ as default }
 (function(){
-  exports.default = (function(){
+  export$ = (function(){
     var prototype = constructor.prototype;
     function constructor(){}
     constructor.prototype.foo = function(){
