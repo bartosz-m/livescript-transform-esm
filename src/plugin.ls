@@ -575,13 +575,6 @@ TransformESM = ^^Plugin
             ExtractExportNameFromClass
             MyExport.compile[as-node].js-function = (o) ->
                 name = @name.compile o
-                # console.log @name[type]
-                # if 'default' in @name<[name value]>
-                #     console.log \without @name[type]
-                # if @name.name == "'default'"
-                #     console.log \with @name[type]
-                # if @name[type] == \Var
-                #     console.log @name
                 inner = (@local.compile o)
                 wrap-default = -> if it == "'default'" then "Symbol.for('default.module')" else it
                 property = if 'default' in @name<[name value]>

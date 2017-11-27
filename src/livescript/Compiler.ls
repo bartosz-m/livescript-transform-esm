@@ -70,23 +70,6 @@ BlockRemoveChild = JsNode.new (child) ->
 AST.Block
   ..Compile = BlockCompile
   ..replace-child = BlockReplaceChild[js]
-    
-  # ..replace-child = (child, ...nodes) ->
-  #     idx = @lines.index-of child
-  #     unless idx > -1
-  #         throw Error "Trying to replace node witch is not child of current node"
-  #     unless nodes.length
-  #         throw Error "Replace called without nodes"
-  #     @lines.splice idx, 1, ...nodes
-  #     for node in nodes
-  #         node[parent] = @
-  #     child
-  # ..remove-child = (child) ->
-  #     idx = @lines.index-of child
-  #     unless idx > -1
-  #         throw Error "Trying to replace node witch is not child of current node"
-  #     @lines.splice idx, 1
-  #     child
   ..remove-child = BlockRemoveChild[js]
 
 AssignReplaceChild = JsNode.new (child, ...nodes) ->
@@ -105,16 +88,6 @@ AssignReplaceChild
 
 AST.Assign
     ..replace-child = AssignReplaceChild[js]
-    # ..replace-child = (child, ...nodes) ->
-    #     if nodes.length != 1 
-    #         throw new Error "Cannot replace child of assign with #{nodes.length} nodes."
-    #     [new-node] = nodes
-    #     if @left == child
-    #         @left = new-node
-    #     else if @right == child
-    #         @right = new-node
-    #     else
-    #       throw new Error "Node is not child of Assign"
 
 for k, NodeType of AST
     for k,v of Node{get-children, replace-with,to-source-node}
@@ -130,7 +103,6 @@ Compiler <<<
         @lexer = Lexer.create {@livescript}
         @ast = AST[copy]!
         assert @ast.Block != AST.Block
-        # @ast = AST
         @expand = ExpandNode[copy]!
         @postprocess-ast = SeriesNode.copy!
             ..name = 'postprocessAst'
