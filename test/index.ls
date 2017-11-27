@@ -47,7 +47,7 @@ tests = fs.readdir-sync __dirname .filter -> it != \index.ls and it.match /\.ls$
 
 
 
-for test in tests# when test.match /^ls-compile/
+for test in tests# when test.match /^simple\.ls/
     console.log "testing #{test}"
     try
         code-file = path.join __dirname, test
@@ -57,7 +57,7 @@ for test in tests# when test.match /^ls-compile/
         cjs-code = fs.read-file-sync output-file, \utf8
         ems-code = fs.read-file-sync module-file, \utf8
         test-compilation {compiler: esm-compiler, ls-code, js-code:ems-code, filename: code-file}
-        # test-compilation {compiler: cjs-compiler, ls-code, js-code:cjs-code, filename: code-file}
+        test-compilation {compiler: cjs-compiler, ls-code, js-code:cjs-code, filename: code-file}
     catch
         if m = e.message.match /ENOENT\: no such file or directory, open '([^']+)'/
             fs.write-file m.1, ""
