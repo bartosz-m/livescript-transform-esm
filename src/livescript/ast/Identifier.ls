@@ -10,6 +10,8 @@ Identifier <<<
     (type): \Identifier
     
     init: (@{name}) !->
+        unless @name?
+            throw Error "Identifier doesn't have name "
       
     traverse-children: (visitor, cross-scope-boundary) ->
     
