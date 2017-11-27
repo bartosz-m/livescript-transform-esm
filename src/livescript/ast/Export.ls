@@ -1,28 +1,31 @@
 require! {
     \./Node
     \./symbols : { parent, type }
+    \../../nodes/symbols : { copy, js, as-node }
+    \../../nodes/ObjectNode
 }
 
-Export = module.exports = ^^Node
-Export <<<
-    (type): \Export
+Export = module.exports = Node[copy]!
+Export[as-node]name = \Export
+Export[as-node]import-enumerable do
+    (type): \Export ## String is getting wrap in ObjectNode and comparison of types returns false
     
     init: (@{local, alias}) ->
-      
+    
     children-names: <[ local alias ]>
-      
+    
     traverse-children: (visitor, cross-scope-boundary)->
         visitor @local, @, \local
         visitor @alias, @, \alias if @alias
         @local.traverse-children ...&
         @alias.traverse-children ...& if @alias
-        
+    
     name:~
         -> @alias ? @local
         
     default:~
         -> @alias?name == \default
-    
+        
     compile: (o) ->
         alias =
             if @alias
@@ -32,7 +35,7 @@ Export <<<
             else []
         inner = (@local.compile o)
         @to-source-node parts: [ "export { ", inner, ...alias, " }" ]
-
+        
     terminator: ';'
     
     local:~
@@ -40,3 +43,9 @@ Export <<<
         (v) ->
             v[parent] = @
             @_local = v
+
+Export <<<
+    (type): \Export
+    
+    
+    

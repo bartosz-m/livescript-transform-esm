@@ -1,3 +1,7 @@
+require! {
+    \./symbols : { copy }
+}
+
 SeriesNode = module.exports = ^^null
 SeriesNode <<<
     name: \SeriesNode
@@ -9,6 +13,8 @@ SeriesNode <<<
         @nodes.push node
     nodes: []
     
+    this: null    # usefull for methods soft bound this
+    
     apply: (this-arg, args) ->
         current = args
         for node in @nodes
@@ -16,13 +22,26 @@ SeriesNode <<<
                 current = [new-value]
         current.0
     
-    process: (value) ->
+    call: (this-arg, ...args) ->
+        current = args
+        for node in @nodes
+            if new-value = node.apply this-arg, current
+                current = [new-value]
+        current.0
+    
+    exec: (value) ->
         current = value
         for node in @nodes
-            if new-value = node.process current
+            if new-value = node.call @this, current
                 current = new-value
         current
     
     copy: ->
         ^^@
             ..nodes = @nodes.map (.copy!)
+    (copy): ->
+        @nodes.for-each !->
+            unless it[copy]
+                throw Error "missing copy on  #{it.name}"
+        ^^@
+            ..nodes = @nodes.map (.[copy]!)

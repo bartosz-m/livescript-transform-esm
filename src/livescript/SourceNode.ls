@@ -1,11 +1,29 @@
 require! {
     \source-map
+    \../nodes/symbols : {as-node}
 }
+
+Super = Symbol \Super
+
+original-add = source-map.SourceNode::add
+
+
+
+source-map.SourceNode::add = (a-chunk) ->
+    if a-chunk[as-node]
+        original-add.call @, "#{a-chunk}"
+    else
+        original-add ...
 
 class SourceNode extends source-map.SourceNode
     module.exports = @
-    !->
-        super ...
+    (Super): source-map.SourceNode.prototype
+    (line,column, ,parts) !->
+        # there were problems whe used String Wrapers
+        # parts = parts.map ->
+        #     if \String == typeof! it then "#{it}"
+        #     else it
+        super line, column, null, parts
         
     replace: (...args) ->
         new SourceNode @line, @column, @source, [..replace(...args) for @children], @name
