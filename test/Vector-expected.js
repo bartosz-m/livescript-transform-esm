@@ -1,6 +1,6 @@
 (function(){
   var Vector;
-  exports.default = Vector = {
+  exports['__default__'] = Vector = {
     x: 0,
     y: 0
   };

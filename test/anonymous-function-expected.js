@@ -1,7 +1,7 @@
 (function(){
   var resolve;
   exports.resolve = resolve = function(specifier, parentModuleURL, defaultResolver){};
-  exports.default = function(){
+  exports['__default__'] = function(){
     return "I'm default";
   };
 }).call(this);

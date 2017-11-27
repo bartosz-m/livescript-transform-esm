@@ -274,4 +274,7 @@ EnableImports = ^^Plugin
         if @config.format == \cjs
             EsImport.compile[as-node]js-function = (o) ->
                 names = @names.compile o
-                @to-source-node parts: [ "var ", names, " = require(", (@source.compile o), ")", @terminator ]
+                required = "require(#{@source.compile o})"
+                unless @names.items
+                    required = "(#{required}['__default__')] || #{required})"
+                @to-source-node parts: [ "var ", names, " = ", required, @terminator ]

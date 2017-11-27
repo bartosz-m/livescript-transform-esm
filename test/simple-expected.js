@@ -3,7 +3,7 @@
   Foo = 'Foo';
   Vector = 'Vector';
   exports.Foo = Foo;
-  exports['default'] = 'x';
+  exports['__default__'] = 'x';
   exports.Bar = 'BarBar';
   exports.FooBar = 'FooBarBar';
   exports.fooFunction = function(){

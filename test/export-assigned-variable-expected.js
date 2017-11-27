@@ -1,5 +1,5 @@
 (function(){
   var compiler;
   compiler = {};
-  exports.default = compiler;
+  exports['__default__'] = compiler;
 }).call(this);
