@@ -1,6 +1,6 @@
 {
   "name": "livescript-transform-esm",
-  "version": "2.0.17",
+  "version": "2.1.0",
   "description": "Livescript plugin enabling es modules in generated code",
   "main": "lib/plugin.js",
   "scripts": {
