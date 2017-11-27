@@ -211,7 +211,9 @@ ExpandObjectExports <<<
         if (object = it.local)[type] == \Obj
             object.items
     map: (items) ->
-        items.map ({key,val}) ~> @Export.create local: val, alias: key
+        items.map ({key,val}) ~>
+          # console.log key
+          @Export.create local: val, alias: key
             
 ExportRules.append ExpandObjectExports
 
@@ -232,6 +234,7 @@ SplitAssignExports <<<
     exec: ->
         if matched = @match it
             @replace matched
+
 
 ExportRules.append SplitAssignExports
 
@@ -344,6 +347,72 @@ RegisterExportsOnRoot <<<
     exec: (ast-root) !->
         exports = OnlyExports.exec ast-root
         ast-root.exports = exports
+
+# TODO this should be ConditionalNode
+ExtractExportNameFromAssign = ^^BaseNode
+ExtractExportNameFromAssign <<<
+    name: \ExtractExportNameFromAssign
+    Export: Export
+    (copy): -> ^^@
+    match: ->
+        if(assign = it.local)[type] == \Assign
+        and not it.alias?
+            {node:it,assign}
+
+    map: ({node, assign}) ->
+        node.alias = Identifier.create name: assign.left.value, exported: true
+    
+    exec: ->
+        exports = OnlyExports.exec it
+        for e in exports
+            if matched = @match e
+                @map matched
+                
+        it
+
+# TODO this should be ConditionalNode
+ExtractExportNameFromLiteral = ^^BaseNode
+ExtractExportNameFromLiteral <<<
+    name: \ExtractExportNameFromLiteral
+    Export: Export
+    (copy): -> ^^@
+    match: ->
+        if(assign = it.local)[type] == \Literal
+        and not it.alias?
+            {node:it, name: convert-literal-to-string it.local}
+
+    map: ({node, name}) ->
+        node.alias = Identifier.create name: name
+    
+    exec: ->
+        exports = OnlyExports.exec it
+        for e in exports
+            if matched = @match e
+                @map matched
+                
+        it
+
+ExtractExportNameFromClass = ^^BaseNode
+ExtractExportNameFromClass <<<
+    name: \ExtractExportNameFromClass
+    Export: Export
+    (copy): -> ^^@
+    match: ->
+        if(_class = it.local)[type] == \Class
+        and not it.alias?
+            {node:it, name: _class.title.value}
+
+    map: ({node, name}) ->
+        node.alias = Identifier.create name: name
+    
+    exec: ->
+        exports = OnlyExports.exec it
+        for e in exports
+            if matched = @match e
+                @map matched
+                
+        it
+
 
 MoveExportsToTop = ^^BaseNode
 MoveExportsToTop <<<
@@ -475,32 +544,42 @@ TransformESM = ^^Plugin
         @livescript.lexer.tokenize.append special-lex
         Nodelivescript = @livescript
         
-        # MyExport = Export[copy]!
+        MyExport = Export[copy]!
         
         EnableExports = ConditionalNode[copy]!
             ..condition = JsNode.new -> it[type] == \Export
             ..next = ExportNodes = MatchMapCascadeNode[copy]!
         
         ExportNodes
-            ..append SplitAssignExports
-            ..append ExpandArrayExports
-            ..append EnableDefaultExports
-            ..append WrapLiteralExports
-            ..append WrapAnonymousFunctionExports
-            ..append ExpandObjectExports
+            ..append ExpandArrayExports with Export: MyExport
+            ..append EnableDefaultExports with Export: MyExport
+            ..append ExpandObjectExports with Export: MyExport
         @livescript.expand
-            ..append InsertExportNodes
+            ..append InsertExportNodes with Export: MyExport
             ..append EnableExports
         @livescript.postprocess-ast.append RegisterExportsOnRoot
-        unless @config.format == \cjs
+        
+        if @config.format != \cjs
+            ExportNodes
+                ..append WrapLiteralExports with Export: MyExport
+                ..append WrapAnonymousFunctionExports with Export: MyExport
+                ..append SplitAssignExports with Export: MyExport
             @livescript.postprocess-ast.append MoveExportsToTop
             @livescript.postprocess-ast.append DisableImplicitExportVariableDeclaration
             @livescript.ast.Block.Compile.append AddExportsDeclarations
-        # else
-        #     Export.compile[as-node].js-function = (o) ->
-        #         name = @name.compile o
-        #         inner = (@local.compile o)
-        #         @to-source-node parts: [ "exports.#{name} = " , inner, ]
+        else
+            @livescript.postprocess-ast
+                ..append ExtractExportNameFromAssign
+                ..append ExtractExportNameFromLiteral
+                ..append ExtractExportNameFromClass
+            ExtractExportNameFromClass
+            MyExport.compile[as-node].js-function = (o) ->
+                name = @name.compile o
+                inner = (@local.compile o)
+                property = if @name.reserved
+                    then "[#{name}]"
+                    else ".#{name}"
+                @to-source-node parts: [ "exports#{property} = " , inner, ]
                 
         
         @livescript.ast.Block.Compile.append AddImportsDeclarations
