@@ -104,7 +104,7 @@ ExportRules <<<
     name: \Export
     rules: []
     match: ->
-        if it[type] == \Export
+        if it[type] == Export[type]
             for rule in @rules
                 if m = rule.match it
                     result =
@@ -334,7 +334,7 @@ RemoveNode <<<
 OnlyExports = ^^FilterAst
 OnlyExports <<<
     name: \OnlyExports
-    test: (.[type] == \Export)
+    test: (.[type] == Export[type])
 
 RemoveNodes = ProcessArray.copy!
 RemoveNodes <<<
@@ -547,7 +547,7 @@ TransformESM = ^^Plugin
         MyExport = Export[copy]!
         
         EnableExports = ConditionalNode[copy]!
-            ..condition = JsNode.new -> it[type] == \Export
+            ..condition = JsNode.new -> it[type] == Export[type]
             ..next = ExportNodes = MatchMapCascadeNode[copy]!
         
         ExportNodes

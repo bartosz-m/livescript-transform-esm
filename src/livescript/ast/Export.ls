@@ -8,7 +8,7 @@ require! {
 Export = module.exports = Node[copy]!
 Export[as-node]name = \Export
 Export[as-node]import-enumerable do
-    (type): \Export ## String is getting wrap in ObjectNode and comparison of types returns false
+    (type): \Export.ast.livescript
     
     init: (@{local, alias}) ->
     
@@ -43,9 +43,4 @@ Export[as-node]import-enumerable do
         (v) ->
             v[parent] = @
             @_local = v
-
-Export <<<
-    (type): \Export
-    
-    
     

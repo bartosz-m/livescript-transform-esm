@@ -8,12 +8,9 @@ require! {
 }
 
 Import = Node[copy]!
-Compile = JsNode.new (o) ->
-    names = @names.compile o
-    @to-source-node parts: [ "import ", names, " from ", (@source.compile o), @terminator ]
 
 Import[as-node]import-enumerable do
-    (type): \MyImport
+    (type): \Import.ast.livescript
     init: (@{names, source,all}) ->
     traverse-children: (visitor, cross-scope-boundary) ->
     compile: (o) ->
