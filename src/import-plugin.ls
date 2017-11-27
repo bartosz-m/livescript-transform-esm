@@ -276,5 +276,5 @@ EnableImports = ^^Plugin
                 names = @names.compile o
                 required = "require(#{@source.compile o})"
                 unless @names.items
-                    required = "(#{required}['__default__')] || #{required})"
+                    required = "(#{required}['__default__'] || #{required})"
                 @to-source-node parts: [ "var ", names, " = ", required, @terminator ]
