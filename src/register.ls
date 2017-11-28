@@ -1,1 +1,2 @@
-require \./plugin .install!
+import \./plugin
+plugin.install!

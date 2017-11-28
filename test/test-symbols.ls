@@ -1,2 +1,2 @@
-import all \../src/core/components/symbols
+import all \./symbols
 console.log create

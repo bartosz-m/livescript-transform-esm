@@ -5,14 +5,14 @@ require! {
     \livescript : livescript
     \livescript/lib/lexer
     \livescript-transform-object-create
-    # \livescript-transform-esm/lib/plugin : transform-esm
+    \livescript-transform-esm/lib/plugin : transform-esm
     \livescript-compiler/lib/livescript/Compiler : {__default__: Compiler }
     # \../src
 }
 
 
 ls-compiler = Compiler.create {livescript: livescript with {lexer}}
-# transform-esm.install ls-compiler, format: \cjs
+transform-esm.install ls-compiler, format: \cjs
 
 absolute-path = -> path.normalize path.join __dirname, it
 

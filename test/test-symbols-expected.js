@@ -1,4 +1,4 @@
-var { init, create } = require('../src/core/components/symbols');
+var { init, create } = require('./symbols');
 (function(){
   console.log(create);
 }).call(this);

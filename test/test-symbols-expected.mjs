@@ -1,4 +1,4 @@
-import { init, create } from '../src/core/components/symbols';
+import { init, create } from './symbols';
 (function(){
   console.log(create);
 }).call(this);

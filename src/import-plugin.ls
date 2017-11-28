@@ -2,22 +2,23 @@ require! {
     assert
     path
     fs
-    \./livescript/Plugin
-    \./livescript/ast/symbols : { parent, type }
+    \livescript-compiler/lib/livescript/Plugin
+    \livescript-compiler/lib/livescript/ast/symbols : { parent, type }
+    \livescript-compiler/lib/livescript/ast/Pattern
+    \livescript-compiler/lib/livescript/ast/ObjectPattern
+    \livescript-compiler/lib/livescript/ast/Literal
+    \livescript-compiler/lib/livescript/ast/Identifier
+    \livescript-compiler/lib/livescript/ast/TemporarVariable
+    \livescript-compiler/lib/nodes/ConditionalNode
+    \livescript-compiler/lib/nodes/symbols : {copy,as-node}
+    \livescript-compiler/lib/nodes/JsNode
+    \livescript-compiler/lib/nodes/TrueNode
+    \livescript-compiler/lib/nodes/IfNode
+    \livescript-compiler/lib/nodes/identity
+    \livescript-compiler/lib/nodes/components/Copiable
+    \livescript-compiler/lib/nodes/MatchMapCascadeNode
+    \livescript-compiler/lib/core/symbols : {create}
     \./livescript/ast/Import
-    \./livescript/ast/Pattern
-    \./livescript/ast/ObjectPattern
-    \./livescript/ast/Literal
-    \./livescript/ast/Identifier
-    \./livescript/ast/TemporarVariable
-    \./nodes/ConditionalNode
-    \./nodes/symbols : {copy,as-node}
-    \./nodes/JsNode
-    \./nodes/TrueNode
-    \./nodes/IfNode
-    \./nodes/identity
-    \./nodes/components/Copiable
-    \./nodes/MatchMapCascadeNode
 }
 
 convert-literal-to-string = -> it.value.substring 1, it.value.length - 1
@@ -57,7 +58,7 @@ ConvertImports <<<
             all: it.all
     
     map: ({all,source}) ->
-        @Import.create {all,source}
+        @Import[create] {all,source}
     
 
 
@@ -72,7 +73,7 @@ ExtractNamesFromSource <<<
             node: it
             names: path.basename value.replace /\'/gi, ''
     map: ({node,names}) ->
-        node.names = Identifier.create name: names
+        node.names = Identifier[create] name: names
         node
   
 
@@ -86,12 +87,12 @@ ExpandObjectImports <<<
             it.source.items
     map: (items) ->
         items.map ~>
-            @Import.create do
+            @Import[create] do
                 if it.key
                     names: it.val
-                    source: it.key ? Identifier.create name: convert-literal-to-string it.val
+                    source: it.key ? Identifier[create] name: convert-literal-to-string it.val
                 else
-                    names: Identifier.create name: convert-literal-to-string it.val
+                    names: Identifier[create] name: convert-literal-to-string it.val
                     source: it.val
   
 
@@ -103,7 +104,7 @@ ConvertImportsObjectNamesToPatterns <<<
             items: it.names.items
             node: it
     map: ({node,items}) ->
-        node.names = Pattern.create {items}
+        node.names = Pattern[create] {items}
         node
   
 extract-name-from-source = ->
@@ -128,8 +129,8 @@ ExpandArrayImports <<<
         if it.source[type] == \Arr
             it.source.items
     map-item: ->
-        @Import.create do
-            names: Identifier.create imported: true, name: extract-name-from-source it.value
+        @Import[create] do
+            names: Identifier[create] imported: true, name: extract-name-from-source it.value
             source: it
 
 ExpandMetaImport = ^^MatchMapNode
@@ -169,10 +170,10 @@ ExportResolver =
         ast-root = @livescript.generate-ast code, filename: resolved-path
         
         exports = ast-root.exports
-        items = exports.map -> Identifier.create name: it.name.value
-        @Import.create do
-            names: ObjectPattern.create {items}
-            source: Literal.create value: "'#{module-path}'"
+        items = exports.map -> Identifier[create] name: it.name.value
+        @Import[create] do
+            names: ObjectPattern[create] {items}
+            source: Literal[create] value: "'#{module-path}'"
 RemoveNode = JsNode.new (node) -> node.remove!
     ..name = \RemoveNode
     
@@ -209,7 +210,7 @@ ReplaceImportWithTemporarVariable =
     name: \ReplaceImportWithTemporarVariable
     (copy): -> ^^@
     exec: (_import) ->
-        names = TemporarVariable.create name: \import, is-import: true
+        names = TemporarVariable[create] name: \import, is-import: true
         _import.replace-with names
         _import.names = names
     call: (,...args) -> @exec ...args
@@ -236,8 +237,7 @@ MoveImportsToTop =
         ast-root.imports = imports
         RemoveOrReplaceImports.exec imports
 
-EnableImports = ^^Plugin
-    module.exports = ..
+export default EnableImports = ^^Plugin
     ..name = \EnableImports
     ..config = {}
     ..enable = !->

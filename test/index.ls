@@ -6,8 +6,8 @@ require! {
     livescript
     \livescript/lib/lexer
     # \../src/register
-    \../src/plugin
-    \../src/livescript/Compiler
+    \../lib/plugin
+    \livescript-compiler/lib/livescript/Compiler
 }
 
 esm-compiler = Compiler.create livescript: livescript with {lexer}

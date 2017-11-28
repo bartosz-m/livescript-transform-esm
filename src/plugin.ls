@@ -1,31 +1,34 @@
-require! <[ assert livescript-ast-transform ]>
-{ parent, type } = require \./livescript/ast/symbols
+{ parent, type } = import \livescript-compiler/lib/livescript/ast/symbols
 
-require! {
-    fs
-    path
-    \./components/core/Creatable
-    \./composition : { import-properties }
-    \./livescript/ast/Assign
+import
+    \assert
+    \fs
+    \path
+    \livescript-compiler/lib/core/components/Creatable
+    \livescript-compiler/lib/composition : { import-properties }
+    \livescript-compiler/lib/livescript/ast/Assign
+    
+    \livescript-compiler/lib/livescript/ast/Identifier
+    
+    \livescript-compiler/lib/livescript/ast/Literal
+    \livescript-compiler/lib/livescript/ast/Node
+    \livescript-compiler/lib/livescript/ast/ObjectPattern
+    \livescript-compiler/lib/livescript/ast/Pattern
+    \livescript-compiler/lib/livescript/ast/TemporarVariable
+    \livescript-compiler/lib/livescript/Plugin
+    \livescript-compiler/lib/nodes/MatchMapCascadeNode
+    \livescript-compiler/lib/nodes/ConditionalNode
+    \livescript-compiler/lib/nodes/IfNode
+    \livescript-compiler/lib/nodes/identity
+    \livescript-compiler/lib/nodes/TrueNode
+    \livescript-compiler/lib/nodes/JsNode
+    \livescript-compiler/lib/nodes/symbols : { copy, as-node }
+    \livescript-compiler/lib/livescript/SourceNode
+    \livescript-compiler/lib/core/symbols : {create, init}
     \./livescript/ast/Export
-    \./livescript/ast/Identifier
     \./livescript/ast/Import
-    \./livescript/ast/Literal
-    \./livescript/ast/Node
-    \./livescript/ast/ObjectPattern
-    \./livescript/ast/Pattern
-    \./livescript/ast/TemporarVariable
-    \./livescript/Plugin
-    \./nodes/MatchMapCascadeNode
-    \./nodes/ConditionalNode
-    \./nodes/IfNode
-    \./nodes/identity
-    \./nodes/TrueNode
-    \./nodes/JsNode
-    \./nodes/symbols : { copy, as-node }
-    \./livescript/SourceNode
     \./import-plugin
-}
+
           
 # Question unfold-soak, compile vs compile-node
 # info scope.temporary
@@ -35,7 +38,7 @@ TemporarAssigment = ^^Node
 TemporarAssigment <<<
     (type): \TemporarAssigment
 
-    init: (@{left,right}) !->
+    (init): (@{left,right}) !->
 
     traverse-children: (visitor, cross-scope-boundary) ->
         visitor @left, @, \left
@@ -127,7 +130,7 @@ ConvertImports <<<
             all: it.all
     
     map: ({all,source}) ->
-        Import.create {all,source}
+        Import[create] {all,source}
         
     exec: ->
         if matched = @match it
@@ -151,7 +154,7 @@ ExpandArrayExports <<<
         if it.local[type] == \Arr
             it.local.items
     map: (items) ->
-        items.map ~> @Export.create local: it
+        items.map ~> @Export[create] local: it
 
 ExportRules.append ExpandArrayExports
 
@@ -165,7 +168,7 @@ EnableDefaultExports <<<
         and cascade.input.value == \__es-export-default__
             cascade.output.lines.0
     map: (line) ->
-        @Export.create local: line, alias: Identifier.create name: \default
+        @Export[create] local: line, alias: Identifier[create] name: \default
 
 ExportRules.append EnableDefaultExports
 
@@ -182,9 +185,9 @@ WrapLiteralExports <<<
             it
     
     map: (node) ->
-        tmp = TemporarVariable.create name: \export, is-export: true
-        assign = TemporarAssigment.create left: tmp, right: node.local
-        [assign, @Export.create local: assign.left, alias: node.alias]
+        tmp = TemporarVariable[create] name: \export, is-export: true
+        assign = TemporarAssigment[create] left: tmp, right: node.local
+        [assign, @Export[create] local: assign.left, alias: node.alias]
 
 ExportRules.append WrapLiteralExports
 
@@ -198,7 +201,7 @@ WrapAnonymousFunctionExports <<<
             fn
     
     map: (fn) ->
-        [fn, @Export.create local: Identifier.create fn{name}, exported: true]
+        [fn, @Export[create] local: Identifier[create] fn{name}, exported: true]
 
 ExportRules.append WrapAnonymousFunctionExports
 
@@ -212,8 +215,7 @@ ExpandObjectExports <<<
             object.items
     map: (items) ->
         items.map ({key,val}) ~>
-          # console.log key
-          @Export.create local: val, alias: key
+          @Export[create] local: val, alias: key
             
 ExportRules.append ExpandObjectExports
 
@@ -227,9 +229,9 @@ SplitAssignExports <<<
         if(assign = it.local)[type] == \Assign
             {alias:it.alias,assign}
     map: ({alias, assign}) ->
-        identifier = Identifier.create name: assign.left.value, exported: true
+        identifier = Identifier[create] name: assign.left.value, exported: true
         assign.left = identifier
-        [assign, @Export.create {local: assign.left, alias}]
+        [assign, @Export[create] {local: assign.left, alias}]
     
     exec: ->
         if matched = @match it
@@ -249,7 +251,7 @@ InsertExportNodes =
         const {lines} = cascade.output
         if lines.length == 0
             throw Error "Empty export at #{cascade.line}:#{cascade.column}"
-        lines.map ~> @Export.create local: it
+        lines.map ~> @Export[create] local: it
     
     exec: (value) ->
         if matched = @match value
@@ -360,7 +362,7 @@ ExtractExportNameFromAssign <<<
             {node:it,assign}
 
     map: ({node, assign}) ->
-        node.alias = Identifier.create name: assign.left.value, exported: true
+        node.alias = Identifier[create] name: assign.left.value, exported: true
     
     exec: ->
         exports = OnlyExports.exec it
@@ -382,7 +384,7 @@ ExtractExportNameFromLiteral <<<
             {node:it, name: convert-literal-to-string it.local}
 
     map: ({node, name}) ->
-        node.alias = Identifier.create name: name
+        node.alias = Identifier[create] name: name
     
     exec: ->
         exports = OnlyExports.exec it
@@ -403,7 +405,7 @@ ExtractExportNameFromClass <<<
             {node:it, name: _class.title.value}
 
     map: ({node, name}) ->
-        node.alias = Identifier.create name: name
+        node.alias = Identifier[create] name: name
     
     exec: ->
         exports = OnlyExports.exec it
@@ -435,7 +437,7 @@ is-expression = ->
 ReplaceImportWithTemporarVariable = BaseNode with
     name: \ReplaceImportWithTemporarVariable
     exec: (_import) ->
-        names = TemporarVariable.create name: \import, is-import: true
+        names = TemporarVariable[create] name: \import, is-import: true
         _import.replace-with names
         _import.names = names
 
@@ -452,7 +454,7 @@ RemoveOrReplaceImports = ^^ProcessArray
 
 
 identifier-from-var = JsNode.new (some-var) ->
-    Identifier.create name: some-var.value
+    Identifier[create] name: some-var.value
         copy-source-location some-var, ..
 
 ReplaceVariableWithIdentifier = ConditionalMutate.copy!
@@ -524,7 +526,7 @@ AddImportsDeclarations = JsNode.copy!
         imports = @imports.map -> sn it, (it.compile {}), '\n'
         sn @, ...imports, result
 
-TransformESM = ^^Plugin
+export default TransformESM = ^^Plugin
     module.exports = ..
 
     ..name = 'transform-esm'
@@ -558,7 +560,8 @@ TransformESM = ^^Plugin
         Nodelivescript = @livescript
         
         MyExport = Export[copy]!
-        
+        assert MyExport[type]
+        assert.equal MyExport[type], Export[type]
         EnableExports = ConditionalNode[copy]!
             ..condition = JsNode.new -> it[type] == Export[type]
             ..next = ExportNodes = MatchMapCascadeNode[copy]!

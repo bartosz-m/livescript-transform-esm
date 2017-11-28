@@ -1,16 +1,16 @@
-require! {
-    \./Node
-    \./symbols : { parent, type }
-    \../../nodes/symbols : { copy, js, as-node }
-    \../../nodes/ObjectNode
-}
+import
+    \livescript-compiler/lib/livescript/ast/Node
+    \livescript-compiler/lib/livescript/ast/symbols : { parent, type }
+    \livescript-compiler/lib/nodes/symbols : { copy, js, as-node }
+    \livescript-compiler/lib/nodes/ObjectNode
+    \livescript-compiler/lib/core/symbols : {init}
 
-Export = module.exports = Node[copy]!
+export default Export = Node[copy]!
 Export[as-node]name = \Export
 Export[as-node]import-enumerable do
     (type): \Export.ast.livescript
     
-    init: (@{local, alias}) ->
+    (init): (@{local, alias}) ->
     
     children-names: <[ local alias ]>
     
