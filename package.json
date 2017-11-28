@@ -31,6 +31,6 @@
     "livescript-transform-esm": "^2.3.0"
   },
   "dependencies": {
-    "livescript-ast-transform": "0.1.0"
+      "livescript-compiler": "0.0.4"
   }
 }
