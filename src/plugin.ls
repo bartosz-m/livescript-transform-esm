@@ -552,6 +552,34 @@ export default TransformESM = ^^Plugin
                             ++i # skip default
                             [,, ...rest] = l = lexed[i]
                             result.push [\ID \__es-export-default__ ...rest]
+                    else if l.0 == ":"
+                    and i + 1 < lexed.length
+                    and lexed[i + 1].0 == '...'
+                        result.push l
+                        ++i
+                        [,, ...rest] = l = lexed[i]
+                        result.push [ \ID \__import-to-scope__ ...rest ]
+                    else if l.0 == ":"
+                    and i + 3 < lexed.length
+                    and lexed[i + 1].0 == '{'
+                    and lexed[i + 2].0 == '...'
+                    and lexed[i + 3].0 == '}'
+                        result.push l
+                        ++i
+                        ++i #skip {
+                        [,, ...rest] = l = lexed[i]
+                        result.push [ \ID \__import-to-scope__ ...rest ]
+                        ++i #skip }
+                    else if l.0 == \DECL and l.1 == \import
+                    and i + 3 < lexed.length
+                    and lexed[i + 1].0 == \INDENT
+                    and lexed[i + 2].0 == \...
+                    and lexed[i + 3].0 == \INDENT
+                        [,, ...rest] = l
+                        result.push [ \DECL \importAll ...rest ]
+                        i++
+                        result.push lexed[i]
+                        i++ # INDENT
                     else
                         result.push l
                 result
