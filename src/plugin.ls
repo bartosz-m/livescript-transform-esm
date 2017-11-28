@@ -505,6 +505,19 @@ AddExportsDeclarations = JsNode.copy!
         else ""
         sn @, exports-declaration, ...exports, result
 
+CheckIfOnlyDefaultExports = ^^BaseNode
+CheckIfOnlyDefaultExports <<<
+    name: \CheckIfOnlyDefaultExports
+    exec: (ast-root) !->
+        only-defaults = true
+        for e in ast-root.exports
+            only-defaults = only-defaults and e.default
+        if only-defaults
+            for e in ast-root.exports
+                e.override-module = true
+        
+        # sn @, exports-declaration, ...exports, result
+
 AddImportsDeclarations = JsNode.copy!
     ..name = \AddImportsDeclarations
     ..js-function = (result) ->
@@ -564,25 +577,34 @@ TransformESM = ^^Plugin
                 ..append WrapLiteralExports with Export: MyExport
                 ..append WrapAnonymousFunctionExports with Export: MyExport
                 ..append SplitAssignExports with Export: MyExport
-            @livescript.postprocess-ast.append MoveExportsToTop
-            @livescript.postprocess-ast.append DisableImplicitExportVariableDeclaration
+            @livescript.postprocess-ast
+                ..append MoveExportsToTop
+                ..append DisableImplicitExportVariableDeclaration                
             @livescript.ast.Block.Compile.append AddExportsDeclarations
         else
             @livescript.postprocess-ast
                 ..append ExtractExportNameFromAssign
                 ..append ExtractExportNameFromLiteral
                 ..append ExtractExportNameFromClass
+                ..append CheckIfOnlyDefaultExports
             ExtractExportNameFromClass
             MyExport.compile[as-node].js-function = (o) ->
                 name = @name.compile o
                 inner = (@local.compile o)
                 wrap-default = -> if it == "'default'" then "Symbol.for('default.module')" else it
-                property = if 'default' in @name<[name value]>
+                # property = if 'default' in @name<[name value]>
+                property = if @default
                     then "['__default__']"
                     else if @name.reserved
                         then "[#{@name.compile o}]"
                         else ".#{name}"
-                @to-source-node parts: [ "exports#{property} = " , inner, ]
+                if @override-module
+                    named-default-export = if @local[type] == \Literal
+                        then []
+                        else [@terminator, "\n", o.indent, "Object.defineProperty(module.exports, '__default__', {enumerable:false, value: module.exports})"]
+                    @to-source-node parts: [ "module.exports = " , inner, ...named-default-export ] 
+                else
+                    @to-source-node parts: [ "exports#{property} = " , inner, ]
                 
         
         @livescript.ast.Block.Compile.append AddImportsDeclarations

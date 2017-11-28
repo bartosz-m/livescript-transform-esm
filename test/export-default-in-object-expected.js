@@ -1,3 +1,3 @@
 (function(){
-  exports['__default__'] = 'x';
+  module.exports = 'x';
 }).call(this);

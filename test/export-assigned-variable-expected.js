@@ -1,5 +1,6 @@
 (function(){
   var compiler;
   compiler = {};
-  exports['__default__'] = compiler;
+  module.exports = compiler;
+  Object.defineProperty(module.exports, '__default__', {enumerable:false, value: module.exports});
 }).call(this);

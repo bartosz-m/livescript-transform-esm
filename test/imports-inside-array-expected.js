@@ -6,7 +6,8 @@ var import4$ = (require('livescript-transform-esm/lib/plugin')['__default__'] ||
 var import5$ = (require('livescript-transform-implicit-async/lib/plugin')['__default__'] || require('livescript-transform-implicit-async/lib/plugin'));
 (function(){
   var config;
-  exports['__default__'] = config = {
+  module.exports = config = {
     plugins: [import$, import1$, import2$, import3$, import4$, import5$]
   };
+  Object.defineProperty(module.exports, '__default__', {enumerable:false, value: module.exports});
 }).call(this);
