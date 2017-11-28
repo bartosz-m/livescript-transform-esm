@@ -91,6 +91,7 @@ ExpandObjectImports <<<
                 if it.key
                     names: it.val
                     source: it.key ? Identifier[create] name: convert-literal-to-string it.val
+                    all: it.val.value == \__import-to-scope__
                 else
                     names: Identifier[create] name: convert-literal-to-string it.val
                     source: it.val
