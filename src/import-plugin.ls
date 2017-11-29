@@ -2,6 +2,7 @@ require! {
     assert
     path
     fs
+    \globby
     \livescript-compiler/lib/livescript/Plugin
     \livescript-compiler/lib/livescript/ast/symbols : { parent, type }
     \livescript-compiler/lib/livescript/ast/Pattern
@@ -21,7 +22,7 @@ require! {
     \./livescript/ast/Import
 }
 
-convert-literal-to-string = -> it.value.substring 1, it.value.length - 1
+literal-to-string = -> it.value.substring 1, it.value.length - 1
 
 is-expression = ->
     node = it
@@ -90,10 +91,10 @@ ExpandObjectImports <<<
             @Import[create] do
                 if it.key
                     names: it.val
-                    source: it.key ? Identifier[create] name: convert-literal-to-string it.val
+                    source: it.key ? Identifier[create] name: literal-to-string it.val
                     all: it.val.value == \__import-to-scope__
                 else
-                    names: Identifier[create] name: convert-literal-to-string it.val
+                    names: Identifier[create] name: literal-to-string it.val
                     source: it.val
   
 
@@ -134,6 +135,26 @@ ExpandArrayImports <<<
             names: Identifier[create] imported: true, name: extract-name-from-source it.value
             source: it
 
+ExpandGlobImport = ^^MatchMapNode
+ExpandGlobImport <<<
+    name: \ExpandGlobImport
+    
+    Import: Import
+    
+    match: (node) ->
+        if (literal = node.source)[type] == \Literal
+        and literal.value.match /\*/
+            glob = literal-to-string literal
+            module-path = path.dirname node.filename
+            search-path = path.join module-path, glob
+            paths = globby.sync search-path
+            paths.map ->
+                without-ext = path.basename it, path.extname it
+                './' + path.relative module-path, without-ext
+    
+    map: (paths) ->
+        paths.map ~> @Import[create] source: Literal[create] value: "'#{it}'"
+
 ExpandMetaImport = ^^MatchMapNode
 ExpandMetaImport <<<
     name: \ExpandMetaImport
@@ -148,7 +169,7 @@ ExpandMetaImport <<<
         try
             unless filename
                 throw Error "Meta-import requires filename property on Import nodes"
-            @export-resolver.resolve (convert-literal-to-string source), filename 
+            @export-resolver.resolve (literal-to-string source), filename 
         catch
             if e.message.match /no such file/
                 throw Error "Cannot meta-import module #{node.source.value} at #{node.line}:#{node.column} in #{node.filename}\nProbably mispelled module path"
@@ -175,6 +196,7 @@ ExportResolver =
         @Import[create] do
             names: ObjectPattern[create] {items}
             source: Literal[create] value: "'#{module-path}'"
+
 RemoveNode = JsNode.new (node) -> node.remove!
     ..name = \RemoveNode
     
@@ -254,6 +276,7 @@ export default EnableImports = ^^Plugin
             ..append ConvertImportsObjectNamesToPatterns
             ..append ExpandArrayImports with Import: EsImport
             ..append ExpandMetaImport with {Import: EsImport, export-resolver}
+            ..append ExpandGlobImport with {Import: EsImport}
                 
         EnableImports = ConditionalNode[copy]!
             ..name = \Imports
