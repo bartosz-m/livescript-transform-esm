@@ -122,24 +122,6 @@ ExportRules <<<
         replacer = rule.replace matched
         as-array replacer
 
-ConvertImports = ^^BaseNode
-ConvertImports <<<
-    name: \ConvertImports
-    match: ->
-        if it[type] == \Import
-        and it.left.value == 'this'
-            source: it.right
-            all: it.all
-    
-    map: ({all,source}) ->
-        Import[create] {all,source}
-        
-    exec: ->
-        if matched = @match it
-            @replace matched
-    
-    copy: ->
-        ^^@
   
 extract-name-from-source = ->
     it
@@ -151,44 +133,42 @@ extract-name-from-source = ->
 ExpandArrayExports = ^^BaseNode
 ExpandArrayExports <<<
     name: \ExpandArrayExports
-    Export: Export
+    ast: {}
     match: ->
         if it.local[type] == \Arr
             it.local.items
     map: (items) ->
-        items.map ~> @Export[create] local: it
+        items.map ~> @ast.Export[create] local: it
 
 ExpandBlockExports = ^^BaseNode
 ExpandBlockExports <<<
     name: \ExpandBlockExports
-    Export: Export
+    ast: {}
     match: ->
         if it.local[type] == \Block
             lines: it.local.lines
             alias: it.alias
     map: ({lines, alias}) ->
-        lines.map ~> @Export[create] local: it, alias: alias
+        lines.map ~> @ast.Export[create] local: it, alias: alias
 
-ExportRules.append ExpandArrayExports
 
 EnableDefaultExports = ^^BaseNode
 EnableDefaultExports <<<
     name: \EnableDefaultExports
-    Export: Export
+    ast: {}
     match: ->
         if (cascade = it.local)[type] == \Cascade
         and cascade.input[type] == \Var
         and cascade.input.value == \__es-export-default__
             cascade.output.lines.0
     map: (line) ->
-        @Export[create] local: line, alias: Identifier[create] name: \default
+        @ast.Export[create] local: line, alias: Identifier[create] name: \default
 
-ExportRules.append EnableDefaultExports
 
 WrapLiteralExports = ^^BaseNode
 WrapLiteralExports <<<
     name: \WrapLiteralExports
-    Export: Export
+    ast: {}
     match: ->
         {local} = it
         Type = local[type]
@@ -200,54 +180,46 @@ WrapLiteralExports <<<
     map: (node) ->
         tmp = TemporarVariable[create] name: \export, is-export: true
         assign = TemporarAssigment[create] left: tmp, right: node.local
-        [assign, @Export[create] local: assign.left, alias: node.alias]
-
-ExportRules.append WrapLiteralExports
+        [assign, @ast.Export[create] local: assign.left, alias: node.alias]
 
 WrapAnonymousFunctionExports = ^^BaseNode
 WrapAnonymousFunctionExports <<<
     name: \WrapAnonymousFunctionExports
-    Export: Export
+    ast: {}
     match: ->
         if (fn = it.local)[type] == \Fun
         and fn.name?
             fn
     
     map: (fn) ->
-        [fn, @Export[create] local: Identifier[create] fn{name}, exported: true]
-
-ExportRules.append WrapAnonymousFunctionExports
-
+        [fn, @ast.Export[create] local: Identifier[create] fn{name}, exported: true]
 
 ExpandObjectExports = ^^BaseNode
 ExpandObjectExports <<<
     name: \ExpandObjectExports
-    Export: Export
+    ast: {}
     match: ->
         if (object = it.local)[type] == \Obj
             object.items
     map: (items) ->
         items.map ({key,val}) ~>
-          @Export[create] local: val, alias: key
+          @ast.Export[create] local: val, alias: key
 
 ExpandObjectPatternExports = ^^BaseNode
 ExpandObjectPatternExports <<<
     name: \ExpandObjectExports
-    Export: Export
+    ast: {}
     match: ->
         if (object = it.local)[type] == ObjectPattern[type]
             object.items
     map: (items) ->
         items.map ~>
-          @Export[create] local: it
-            
-ExportRules.append ExpandObjectExports
-
+          @ast.Export[create] local: it
 
 SplitAssignExports = ^^BaseNode
 SplitAssignExports <<<
     name: \SplitAssignExports
-    Export: Export
+    ast: {}
     (copy): -> ^^@
     match: ->
         if(assign = it.local)[type] == \Assign
@@ -255,18 +227,16 @@ SplitAssignExports <<<
     map: ({alias, assign}) ->
         identifier = Identifier[create] name: assign.left.value, exported: true
         assign.left = identifier
-        [assign, @Export[create] {local: assign.left, alias}]
+        [assign, @ast.Export[create] {local: assign.left, alias}]
     
     exec: ->
         if matched = @match it
             @replace matched
 
 
-ExportRules.append SplitAssignExports
-
 InsertExportNodes =
     name: \InsertExportNodes
-    Export: Export
+    ast: {}
     match: (node)->
         if node[type] == \Cascade
         and node.input.value == \__es-export__
@@ -275,7 +245,7 @@ InsertExportNodes =
         const {lines} = cascade.output
         if lines.length == 0
             throw Error "Empty export at #{cascade.line}:#{cascade.column}"
-        lines.map ~> @Export[create] local: it
+        lines.map ~> @ast.Export[create] local: it
     
     exec: (value) ->
         if matched = @match value
@@ -383,7 +353,7 @@ RegisterExportsOnRoot <<<
 ExtractExportNameFromAssign = ^^BaseNode
 ExtractExportNameFromAssign <<<
     name: \ExtractExportNameFromAssign
-    Export: Export
+    ast: {}
     (copy): -> ^^@
     match: ->
         if(assign = it.local)[type] == \Assign
@@ -405,7 +375,7 @@ ExtractExportNameFromAssign <<<
 ExtractExportNameFromLiteral = ^^BaseNode
 ExtractExportNameFromLiteral <<<
     name: \ExtractExportNameFromLiteral
-    Export: Export
+    ast: {}
     (copy): -> ^^@
     match: ->
         if(assign = it.local)[type] == \Literal
@@ -426,7 +396,7 @@ ExtractExportNameFromLiteral <<<
 ExtractExportNameFromClass = ^^BaseNode
 ExtractExportNameFromClass <<<
     name: \ExtractExportNameFromClass
-    Export: Export
+    ast: {}
     (copy): -> ^^@
     match: ->
         if(_class = it.local)[type] == \Class
@@ -655,23 +625,23 @@ export default TransformESM = ^^Plugin
             ..next = ExportNodes = MatchMapCascadeNode[copy]!
         
         ExportNodes
-            ..append ExpandArrayExports with Export: MyExport
-            ..append ExpandBlockExports with Export: MyExport
-            ..append EnableDefaultExports with Export: MyExport
-            ..append ExpandObjectExports with Export: MyExport
-            ..append ExpandObjectPatternExports with Export: MyExport
-            ..append ExtractExportNameFromImport with ast: @livescript.ast
+            ..append ExpandArrayExports with @livescript{ast}
+            ..append ExpandBlockExports with @livescript{ast}
+            ..append EnableDefaultExports with @livescript{ast}
+            ..append ExpandObjectExports with @livescript{ast}
+            ..append ExpandObjectPatternExports with @livescript{ast}
+            ..append ExtractExportNameFromImport with with @livescript{ast}
         @livescript.expand
-            ..append InsertExportNodes with Export: MyExport
+            ..append InsertExportNodes with @livescript{ast}
             ..append EnableExports
         @livescript.postprocess-ast
             ..append RegisterExportsOnRoot
         
         if @config.format != \cjs
             ExportNodes
-                ..append WrapLiteralExports with Export: MyExport
-                ..append WrapAnonymousFunctionExports with Export: MyExport
-                ..append SplitAssignExports with Export: MyExport
+                ..append WrapLiteralExports with @livescript{ast}
+                ..append WrapAnonymousFunctionExports with @livescript{ast}
+                ..append SplitAssignExports with @livescript{ast}
             @livescript.postprocess-ast
                 ..append MoveExportsToTop
                 ..append DisableImplicitExportVariableDeclaration                
