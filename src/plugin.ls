@@ -30,6 +30,7 @@ import
     \./livescript/ast/Import
     \./nodes/MatchMap
     \./import-plugin
+    \./dynamic-import-plugin
 
           
 # Question unfold-soak, compile vs compile-node
@@ -252,6 +253,8 @@ InsertExportNodes =
             @map matched
             
     (copy): -> ^^@
+
+
 
 AssignParent =
     name: \AssignParent
@@ -628,7 +631,6 @@ export default TransformESM = ^^Plugin
         @livescript.ast.Export = MyExport
         @livescript.ast.ReExport = ReExport[copy]!
         
-        
         assert MyExport[type]
         assert.equal MyExport[type], Export[type]
         EnableExports = ConditionalNode[copy]!
@@ -644,6 +646,7 @@ export default TransformESM = ^^Plugin
             ..append ExtractExportNameFromImport with @livescript{ast}
         @livescript.expand
             ..append InsertExportNodes with @livescript{ast}
+            # ..append InsertDynamicImport with @livescript{ast}
             ..append EnableExports
         @livescript.postprocess-ast
             ..append RegisterExportsOnRoot
@@ -688,5 +691,6 @@ export default TransformESM = ^^Plugin
         
         @livescript.ast.Block.Compile.append AddImportsDeclarations
         import-plugin.install @livescript, @config
+        dynamic-import-plugin.install @livescript, @config
         
             

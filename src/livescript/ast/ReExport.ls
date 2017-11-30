@@ -14,7 +14,7 @@ ReExport[as-node]import-enumerable do
     
     children-names: <[ names source ]>
     
-    traverse-children: (visitor, cross-scope-boundary)->
+    traverse-children: (visitor, cross-scope-boundary) !->
         for child-name in @children-names when child = @[child-name]
             visitor child, @, child-name
         for child-name in @children-names when child = @[child-name]

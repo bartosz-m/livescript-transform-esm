@@ -1,0 +1,1 @@
+foo = async import \./module/foo

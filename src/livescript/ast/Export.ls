@@ -1,4 +1,5 @@
 import
+    \assert
     \livescript-compiler/lib/livescript/ast/Node
     \livescript-compiler/lib/livescript/ast/symbols : { parent, type }
     \livescript-compiler/lib/nodes/symbols : { copy, js, as-node }
@@ -14,11 +15,11 @@ Export[as-node]import-enumerable do
     
     children-names: <[ local alias ]>
     
-    traverse-children: (visitor, cross-scope-boundary)->
-        visitor @local, @, \local
-        visitor @alias, @, \alias if @alias
-        @local.traverse-children ...&
-        @alias.traverse-children ...& if @alias
+    traverse-children: (visitor, cross-scope-boundary) !->
+        for child-name in @children-names when child = @[child-name]
+            visitor child, @, child-name
+        for child-name in @children-names when (child = @[child-name])
+            child.traverse-children ...&
     
     name:~
         -> @alias ? @local
