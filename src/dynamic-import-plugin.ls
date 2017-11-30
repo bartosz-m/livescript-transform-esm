@@ -41,7 +41,6 @@ export default DynamicImportTransform = ^^Plugin
                 result = []
                 i = -1
                 buffer = [lexed.0, lexed.1]
-                
                 while ++i < lexed.length     
                     l = lexed[i]
                     [,, ...rest] = l
@@ -49,7 +48,6 @@ export default DynamicImportTransform = ^^Plugin
                     if l.0 == \ID and l.1 == \async
                     and i + 2 < lexed.length
                     and lexed[i + 1].0 == \IMPORT
-                    and lexed[i + 2].0 == \STRNUM
                         source = lexed[i + 2]                        
                         [,, ...rest] = l
                         fn-name = [ \ID '__dynamic-import__' ...rest] 

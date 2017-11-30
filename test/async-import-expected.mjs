@@ -1,4 +1,6 @@
 (function(){
-  var foo;
-  foo = import('./module/foo');
+  var foo, vectorPath, Vector;
+  foo = import('./modules/foo');
+  vectorPath = './modules/Vector';
+  Vector = import(vectorPath);
 }).call(this);
