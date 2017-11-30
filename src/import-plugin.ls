@@ -8,6 +8,7 @@ require! {
     \livescript-compiler/lib/livescript/ast/Pattern
     \livescript-compiler/lib/livescript/ast/ObjectPattern
     \livescript-compiler/lib/livescript/ast/Literal
+    \livescript-compiler/lib/livescript/ast/Assign
     \livescript-compiler/lib/livescript/ast/Identifier
     \livescript-compiler/lib/livescript/ast/TemporarVariable
     \livescript-compiler/lib/nodes/ConditionalNode
@@ -20,6 +21,7 @@ require! {
     \livescript-compiler/lib/nodes/MatchMapCascadeNode
     \livescript-compiler/lib/core/symbols : {create}
     \./livescript/ast/Import
+    \./livescript/ast/Export
 }
 
 literal-to-string = -> it.value.substring 1, it.value.length - 1
@@ -29,7 +31,7 @@ is-expression = ->
     result = false
     while (parent-node = node[parent]) and not result
         result = 
-            parent-node[type] in <[ Arr ]>
+            parent-node[type] in [ \Arr Export[type] ]
             or (parent-node[type] == \Assign and parent-node.right == node)
         node = parent-node
     result
@@ -68,9 +70,10 @@ ExtractNamesFromSource = ^^MatchMapNode
 ExtractNamesFromSource <<<
     name: \ExtractNamesFromSource
     match: ->
+        # console.log it.names?,it.source.value?
         if not it.names
         and (value = it.source.value)
-        and not is-expression it
+        # and not is-expression it
             node: it
             names: path.basename value.replace /\'/gi, ''
     map: ({node,names}) ->
@@ -144,16 +147,39 @@ ExpandGlobImport <<<
     match: (node) ->
         if (literal = node.source)[type] == \Literal
         and literal.value.match /\*/
+        and not is-expression node
             glob = literal-to-string literal
             module-path = path.dirname node.filename
-            search-path = path.join module-path, glob
-            paths = globby.sync search-path
+            paths = globby.sync glob, cwd: module-path
             paths.map ->
                 without-ext = path.basename it, path.extname it
                 './' + path.relative module-path, without-ext
     
     map: (paths) ->
         paths.map ~> @Import[create] source: Literal[create] value: "'#{it}'"
+
+ExpandGlobImportAsObject = ^^MatchMapNode
+ExpandGlobImportAsObject <<<
+    name: \ExpandGlobImportAsObject
+    
+    Import: Import
+    
+    match: (node) ->
+        if (literal = node.source)[type] == \Literal
+        and literal.value.match /\*/
+        and is-expression node
+            glob = literal-to-string literal
+            module-path = path.dirname node.filename
+            paths = globby.sync glob, cwd: module-path
+            paths.map ->
+                without-ext = path.basename it, path.extname it
+                './' + path.relative module-path, without-ext
+    
+    map: (paths) ->
+        ObjectPattern[create] items: paths.map ~>
+            @Import[create] do
+                # names: Identifier[create] name: it
+                source: Literal[create] value: "'#{it}'"
 
 ExpandMetaImport = ^^MatchMapNode
 ExpandMetaImport <<<
@@ -210,7 +236,11 @@ FilterAst <<<
         walk = (node,parent,name,index) !~>
             if @test node
                 result.push node
-        ast-root.traverse-children walk
+        ast-root.traverse-children walk, true
+        # for e, i in ast-root.[]exports
+        #     e.traverse-children walk, true
+        # for imp, i in ast-root.[]imports
+        #     imp.traverse-children walk, true
         result
   
 OnlyImports = ^^FilterAst
@@ -271,12 +301,14 @@ export default EnableImports = ^^Plugin
         
         ImportRules = MatchMapCascadeNode[copy]!
             ..name = \Import
+            ..append ExpandGlobImport with {Import: EsImport}
+            ..append ExpandGlobImportAsObject with {Import: EsImport}
             ..append ExtractNamesFromSource
             ..append ExpandObjectImports with Import: EsImport
             ..append ConvertImportsObjectNamesToPatterns
             ..append ExpandArrayImports with Import: EsImport
             ..append ExpandMetaImport with {Import: EsImport, export-resolver}
-            ..append ExpandGlobImport with {Import: EsImport}
+            
                 
         EnableImports = ConditionalNode[copy]!
             ..name = \Imports
