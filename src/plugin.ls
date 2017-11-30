@@ -447,7 +447,7 @@ MoveExportsToTop <<<
         exports = OnlyExports.exec ast-root
         RemoveNodes.exec exports
         ast-root.exports = exports
-        ast-root.is-module = ast-root.is-module or ast-root.exports.length
+        ast-root.is-module = ast-root.is-module or ast-root.exports.length != 0
 
 is-expression = ->
     node = it
@@ -546,14 +546,15 @@ CheckIfOnlyDefaultExports <<<
             for e in ast-root.exports
                 e.override-module = true
 
-MarkAsScript = ^^BaseNode
+MarkAsScript = JsNode.copy!
 MarkAsScript <<<
     name: \MarkAsScript
-    exec: (ast-root) !->
+    js-function: (ast-root) !->
         Object.define-property ast-root, \isModule,
+            configurable: true
             enumerable: true
             get: -> false
-            set: -> # value is immutable
+            set: !-> # value is immutable
         
         # sn @, exports-declaration, ...exports, result
 
@@ -640,7 +641,7 @@ export default TransformESM = ^^Plugin
             ..append EnableDefaultExports with @livescript{ast}
             ..append ExpandObjectExports with @livescript{ast}
             ..append ExpandObjectPatternExports with @livescript{ast}
-            ..append ExtractExportNameFromImport with with @livescript{ast}
+            ..append ExtractExportNameFromImport with @livescript{ast}
         @livescript.expand
             ..append InsertExportNodes with @livescript{ast}
             ..append EnableExports
@@ -664,6 +665,7 @@ export default TransformESM = ^^Plugin
                 ..append CheckIfOnlyDefaultExports
                 ..append MarkAsScript
             ExtractExportNameFromClass
+            # @livescript.ast.Block.Compile.append MarkAsScript
             MyExport.compile[as-node].js-function = (o) ->
                 name = @name.compile o
                 inner = (@local.compile o)
@@ -682,6 +684,7 @@ export default TransformESM = ^^Plugin
                 else
                     @to-source-node parts: [ "exports#{property} = " , inner, ]
                 
+        
         
         @livescript.ast.Block.Compile.append AddImportsDeclarations
         import-plugin.install @livescript, @config

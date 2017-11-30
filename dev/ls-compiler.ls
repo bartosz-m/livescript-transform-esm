@@ -71,6 +71,7 @@ compile = (filepath) !->>
         fs.output-file output, js-result.code
         fs.output-file map-file, JSON.stringify js-result.map.to-JSON!
     catch
+        console.error e
         console.error e.stack
     to-compile--
     set-watching watching

@@ -290,7 +290,7 @@ MoveImportsToTop =
         imports = OnlyImports.exec ast-root
         ast-root.imports = imports
         RemoveOrReplaceImports.exec imports
-        ast-root.is-module = ast-root.is-module or ast-root.imports.length
+        ast-root.is-module = ast-root.is-module or ast-root.imports.length != 0
 
 export default EnableImports = ^^Plugin
     ..name = \EnableImports
