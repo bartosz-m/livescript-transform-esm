@@ -654,8 +654,7 @@ export default TransformESM = ^^Plugin
                 ..append SplitAssignExports with @livescript{ast}
             @livescript.postprocess-ast
                 ..append MoveExportsToTop
-                ..append DisableImplicitExportVariableDeclaration                
-                ..append MarkAsScript
+                ..append DisableImplicitExportVariableDeclaration                                
             @livescript.ast.Block.Compile.append AddExportsDeclarations
         else
             @livescript.postprocess-ast
@@ -663,6 +662,7 @@ export default TransformESM = ^^Plugin
                 ..append ExtractExportNameFromLiteral
                 ..append ExtractExportNameFromClass
                 ..append CheckIfOnlyDefaultExports
+                ..append MarkAsScript
             ExtractExportNameFromClass
             MyExport.compile[as-node].js-function = (o) ->
                 name = @name.compile o
