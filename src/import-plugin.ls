@@ -152,8 +152,8 @@ ExpandGlobImport <<<
             module-path = path.dirname node.filename
             paths = globby.sync glob, cwd: module-path
             paths.map ->
-                without-ext = path.basename it, path.extname it
-                './' + path.relative module-path, without-ext
+                without-ext = it.replace (path.extname it), ''
+                './' + without-ext
     
     map: (paths) ->
         paths.map ~> @Import[create] source: Literal[create] value: "'#{it}'"
@@ -172,8 +172,9 @@ ExpandGlobImportAsObject <<<
             module-path = path.dirname node.filename
             paths = globby.sync glob, cwd: module-path
             paths.map ->
-                without-ext = path.basename it, path.extname it
-                './' + path.relative module-path, without-ext
+                without-ext = it.replace (path.extname it), ''
+                './' + without-ext
+    
     
     map: (paths) ->
         ObjectPattern[create] items: paths.map ~>

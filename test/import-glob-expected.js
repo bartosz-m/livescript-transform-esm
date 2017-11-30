@@ -1,6 +1,6 @@
-var foo = (require('./../foo')['__default__'] || require('./../foo'));
-var Math = (require('./../Math')['__default__'] || require('./../Math'));
-var Vector = (require('./../Vector')['__default__'] || require('./../Vector'));
+var foo = (require('./modules/foo')['__default__'] || require('./modules/foo'));
+var Math = (require('./modules/Math')['__default__'] || require('./modules/Math'));
+var Vector = (require('./modules/Vector')['__default__'] || require('./modules/Vector'));
 (function(){
 
 }).call(this);
