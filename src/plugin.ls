@@ -26,7 +26,9 @@ import
     \livescript-compiler/lib/livescript/SourceNode
     \livescript-compiler/lib/core/symbols : {create, init}
     \./livescript/ast/Export
+    \./livescript/ast/ReExport
     \./livescript/ast/Import
+    \./nodes/MatchMap
     \./import-plugin
 
           
@@ -156,6 +158,17 @@ ExpandArrayExports <<<
     map: (items) ->
         items.map ~> @Export[create] local: it
 
+ExpandBlockExports = ^^BaseNode
+ExpandBlockExports <<<
+    name: \ExpandBlockExports
+    Export: Export
+    match: ->
+        if it.local[type] == \Block
+            lines: it.local.lines
+            alias: it.alias
+    map: ({lines, alias}) ->
+        lines.map ~> @Export[create] local: it, alias: alias
+
 ExportRules.append ExpandArrayExports
 
 EnableDefaultExports = ^^BaseNode
@@ -216,6 +229,17 @@ ExpandObjectExports <<<
     map: (items) ->
         items.map ({key,val}) ~>
           @Export[create] local: val, alias: key
+
+ExpandObjectPatternExports = ^^BaseNode
+ExpandObjectPatternExports <<<
+    name: \ExpandObjectExports
+    Export: Export
+    match: ->
+        if (object = it.local)[type] == ObjectPattern[type]
+            object.items
+    map: (items) ->
+        items.map ~>
+          @Export[create] local: it
             
 ExportRules.append ExpandObjectExports
 
@@ -336,7 +360,12 @@ RemoveNode <<<
 OnlyExports = ^^FilterAst
 OnlyExports <<<
     name: \OnlyExports
-    test: (.[type] == Export[type])
+    test: (.[type] in [Export[type]])
+
+ExportsAndReExports = ^^FilterAst
+ExportsAndReExports <<<
+    name: \ExportsAndReExports
+    test: (.[type] in [Export[type], ReExport[type]])
 
 RemoveNodes = ProcessArray.copy!
 RemoveNodes <<<
@@ -415,6 +444,31 @@ ExtractExportNameFromClass <<<
                 
         it
 
+ExtractExportNameFromImport = ^^MatchMap
+ExtractExportNameFromImport <<<
+    name: \ExtractExportNameFromImport
+    ast: {}
+    match: ->
+        if(_import = it.local)[type] == Import[type]
+        and _import.names?[type] in [\Literal \Identifier Literal[type]]
+        and not it.alias?
+            name = if _import.names.value then that else _import.names.name
+            {name, _import}
+
+    map: ({_import, name}) ->
+        tmp = TemporarVariable[create] name: \import, is-import: true
+        # assign = Assign[create] do
+        #     left: tmp
+        #     right: _import
+        _import.names = tmp    
+        _export = @ast.Export[create] do
+            local: tmp #Identifier[create] name: name
+            alias: Identifier[create] name: name
+        [_import, _export]
+        # name =  path.basename name.replace /'/gi ''
+        # @ast.ReExport[create] do
+        #     names: Identifier[create] {name}
+        #     source: source
 
 MoveExportsToTop = ^^BaseNode
 MoveExportsToTop <<<
@@ -480,7 +534,7 @@ DisableImplicitExportVariableDeclaration =
     exec: (ast-root) !->
         context = {}
         context.exports-names = exports-names = new Set
-        for e in ast-root.exports when e.local.value
+        for e in ast-root.exports when e.local?value
             exports-names.add e.local.value
         
         walk = (node,parent,name,index) !~>
@@ -500,10 +554,13 @@ sn = (node = {}, ...parts) ->
 AddExportsDeclarations = JsNode.copy!
     ..name = \AddExportsDeclarations
     ..js-function = (result) ->
-        exports = @exports.map -> sn it, (it.compile {}), '\n'
+        exports = @exports.map ~> sn it, (it.compile scope: @scope), '\n'
         get-variable-name = -> it.local.compile {}
-        exports-declaration = if exports.length
-        then "var #{@exports.map get-variable-name .join ','};\n"
+        variables-to-declare = @exports
+            .filter -> !it.local.is-import
+            .map -> it.local
+        exports-declaration = if variables-to-declare.length
+        then "var #{variables-to-declare.map (.compile {}) .join ','};\n"
         else ""
         sn @, exports-declaration, ...exports, result
 
@@ -586,8 +643,11 @@ export default TransformESM = ^^Plugin
             
         @livescript.lexer.tokenize.append special-lex
         Nodelivescript = @livescript
-        
         MyExport = Export[copy]!
+        @livescript.ast.Export = MyExport
+        @livescript.ast.ReExport = ReExport[copy]!
+        
+        
         assert MyExport[type]
         assert.equal MyExport[type], Export[type]
         EnableExports = ConditionalNode[copy]!
@@ -596,12 +656,16 @@ export default TransformESM = ^^Plugin
         
         ExportNodes
             ..append ExpandArrayExports with Export: MyExport
+            ..append ExpandBlockExports with Export: MyExport
             ..append EnableDefaultExports with Export: MyExport
             ..append ExpandObjectExports with Export: MyExport
+            ..append ExpandObjectPatternExports with Export: MyExport
+            ..append ExtractExportNameFromImport with ast: @livescript.ast
         @livescript.expand
             ..append InsertExportNodes with Export: MyExport
             ..append EnableExports
-        @livescript.postprocess-ast.append RegisterExportsOnRoot
+        @livescript.postprocess-ast
+            ..append RegisterExportsOnRoot
         
         if @config.format != \cjs
             ExportNodes
