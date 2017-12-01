@@ -1,2 +1,0 @@
-import \./plugin
-plugin.install!

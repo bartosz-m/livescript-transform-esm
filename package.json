@@ -8,7 +8,7 @@
     "test": "node_modules/.bin/lsc -r livescript-transform-object-create test",
     "build": "node_modules/.bin/lsc dev/build",
     "develop": "node_modules/.bin/lsc dev/watch",
-    "update-dependencies": "git add . && git commit -m \"Updated dependencies\" && npm version patch && npm publish"
+    "update-dependencies": "ncu -a && npm install && git add . && git commit -m \"Updated dependencies\" && npm version patch && npm publish"
   },
   "repository": {
     "type": "git",
@@ -27,12 +27,12 @@
     "diff-lines": "^1.1.0",
     "fs-extra": "^4.0.2",
     "livescript": "git+https://github.com/gkz/LiveScript.git",
-    "livescript-compiler": "0.0.16",
-    "livescript-transform-esm": "^2.8.8",
+    "livescript-compiler": "0.0.17",
+    "livescript-transform-esm": "^2.8.9",
     "livescript-transform-object-create": "0.0.4"
   },
   "dependencies": {
     "globby": "^7.1.1",
-    "livescript-compiler": "0.0.16"
+    "livescript-compiler": "0.0.17"
   }
 }
