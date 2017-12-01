@@ -26,12 +26,12 @@
     "diff-lines": "^1.1.0",
     "fs-extra": "^4.0.2",
     "livescript": "git+https://github.com/bartosz-m/LiveScript.git#macros",
-    "livescript-compiler": "0.0.11",
+    "livescript-compiler": "0.0.12",
     "livescript-transform-object-create": "0.0.4",
-    "livescript-transform-esm": "^2.8.1"
+    "livescript-transform-esm": "^2.8.2"
   },
   "dependencies": {
     "globby": "^7.1.1",
-    "livescript-compiler": "0.0.11"
+    "livescript-compiler": "0.0.12"
   }
 }
