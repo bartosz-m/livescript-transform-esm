@@ -75,5 +75,5 @@ export default DynamicImportTransform = ^^Plugin
         if @config.format == \cjs
              @livescript.ast.DynamicImport.compile[as-node]js-function = (o) ->
                    sources = @sources.map (.compile o)
-                   @to-source-node parts: [ "require(", sources, ")" ]
+                   @to-source-node parts: [ "Promise.resolve( require(", sources, ") )" ]
       

@@ -1,6 +1,6 @@
 (function(){
   var foo, vectorPath, Vector;
-  foo = require('./modules/foo');
+  foo = Promise.resolve( require('./modules/foo') );
   vectorPath = './modules/Vector';
-  Vector = require(vectorPath);
+  Vector = Promise.resolve( require(vectorPath) );
 }).call(this);
