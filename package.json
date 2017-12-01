@@ -27,12 +27,12 @@
     "diff-lines": "^1.1.0",
     "fs-extra": "^4.0.2",
     "livescript": "git+https://github.com/gkz/LiveScript.git",
-    "livescript-compiler": "0.0.15",
-    "livescript-transform-esm": "^2.8.5",
+    "livescript-compiler": "0.0.16",
+    "livescript-transform-esm": "^2.8.8",
     "livescript-transform-object-create": "0.0.4"
   },
   "dependencies": {
     "globby": "^7.1.1",
-    "livescript-compiler": "0.0.15"
+    "livescript-compiler": "0.0.16"
   }
 }
