@@ -264,7 +264,7 @@ ReplaceImportWithTemporarVariable =
     name: \ReplaceImportWithTemporarVariable
     (copy): -> ^^@
     exec: (_import) ->
-        names = TemporarVariable[create] name: \import, is-import: true
+        names = TemporarVariable[create] name: \imports, is-import: true
         _import.replace-with names
         _import.names = names
     call: (,...args) -> @exec ...args
