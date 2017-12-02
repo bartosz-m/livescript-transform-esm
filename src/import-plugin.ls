@@ -35,6 +35,17 @@ is-expression = ->
             or (parent-node[type] == \Assign and parent-node.right == node)
         node = parent-node
     result
+    
+    
+copy-source-location = (source, target) !->
+    target <<< source{line,column,filename}
+
+extract-name-from-source = ->
+    it
+    |> (.replace /'/gi,'')
+    |> (.split path.sep)
+    |> (.[* - 1])
+    |> path.basename
 
 MatchMapNode = ^^null
 MatchMapNode <<<
@@ -64,7 +75,10 @@ ConvertImports <<<
         @Import[create] {all,source}
     
 
-
+source-to-name = (literal) ->
+    literal.value
+    |> (.replace /\'/gi, '')
+    |> -> path.basename it, path.extname it
 
 ExtractNamesFromSource = ^^MatchMapNode
 ExtractNamesFromSource <<<
@@ -75,12 +89,16 @@ ExtractNamesFromSource <<<
         and (value = it.source.value)
         # and not is-expression it
             node: it
-            names: path.basename value.replace /\'/gi, ''
+            names: source-to-name it.source
+            # names: path.basename value.replace /\'/gi, ''
     map: ({node,names}) ->
         node.names = Identifier[create] name: names
+            copy-source-location node.source, ..
         node
   
-
+identifier-from-literal = (literal) ->
+    Identifier[create] name: literal-to-string literal
+        copy-source-location literal, ..
 
 ExpandObjectImports = ^^MatchMapNode
 ExpandObjectImports <<<
@@ -91,14 +109,16 @@ ExpandObjectImports <<<
             it.source.items
     map: (items) ->
         items.map ~>
-            @Import[create] do
+            result = @Import[create] do
                 if it.key
                     names: it.val
-                    source: it.key ? Identifier[create] name: literal-to-string it.val
+                    source: it.key ? identifier-from-literal it.val
                     all: it.val.value == \__import-to-scope__
                 else
-                    names: Identifier[create] name: literal-to-string it.val
+                    names: identifier-from-literal it.val
                     source: it.val
+            result
+                copy-source-location it, ..
   
 
 ConvertImportsObjectNamesToPatterns = ^^MatchMapNode
@@ -110,14 +130,10 @@ ConvertImportsObjectNamesToPatterns <<<
             node: it
     map: ({node,items}) ->
         node.names = Pattern[create] {items}
+            copy-source-location node, ..
         node
   
-extract-name-from-source = ->
-    it
-    |> (.replace /'/gi,'')
-    |> (.split path.sep)
-    |> (.[* - 1])
-    |> path.basename
+
 
 ArrayExpander = ^^MatchMapNode
 ArrayExpander <<<
@@ -134,8 +150,10 @@ ExpandArrayImports <<<
         if it.source[type] == \Arr
             it.source.items
     map-item: ->
+        id = Identifier[create] imported: true, name: extract-name-from-source it.value
+            copy-source-location it, ..
         @Import[create] do
-            names: Identifier[create] imported: true, name: extract-name-from-source it.value
+            names: id
             source: it
 
 ExpandGlobImport = ^^MatchMapNode
@@ -151,12 +169,16 @@ ExpandGlobImport <<<
             glob = literal-to-string literal
             module-path = path.dirname node.filename
             paths = globby.sync glob, cwd: module-path
-            paths.map ->
+            .map ->
                 without-ext = it.replace (path.extname it), ''
                 './' + without-ext
+            {paths, literal}
     
-    map: (paths) ->
-        paths.map ~> @Import[create] source: Literal[create] value: "'#{it}'"
+    map: ({paths, literal}) ->
+        paths.map ~>
+            source = Literal[create] value: "'#{it}'"
+                copy-source-location literal, ..
+            @Import[create] source: source
 
 ExpandGlobImportAsObject = ^^MatchMapNode
 ExpandGlobImportAsObject <<<
@@ -171,16 +193,22 @@ ExpandGlobImportAsObject <<<
             glob = literal-to-string literal
             module-path = path.dirname node.filename
             paths = globby.sync glob, cwd: module-path
-            paths.map ->
+            .map ->
                 without-ext = it.replace (path.extname it), ''
                 './' + without-ext
+            {paths, literal:literal}
     
     
-    map: (paths) ->
-        ObjectPattern[create] items: paths.map ~>
+    map: ({paths, literal}) ->
+        result = ObjectPattern[create] items: paths.map ~>
+            source = Literal[create] value: "'#{it}'"
+                copy-source-location literal, ..
             @Import[create] do
-                # names: Identifier[create] name: it
-                source: Literal[create] value: "'#{it}'"
+                source: source
+        
+        result
+            copy-source-location literal, ..
+          
 
 ExpandMetaImport = ^^MatchMapNode
 ExpandMetaImport <<<
@@ -196,7 +224,19 @@ ExpandMetaImport <<<
         try
             unless filename
                 throw Error "Meta-import requires filename property on Import nodes"
-            @export-resolver.resolve (literal-to-string source), filename 
+            module-url = literal-to-string source
+            exports = @export-resolver.resolve (literal-to-string source), filename
+            items = exports.map -> 
+                Identifier[create] name: it.name.value
+                    copy-source-location source, ..
+            
+            resolved-source = Literal[create] value: "'#{module-url}'"
+                copy-source-location source, ..
+            resolved-names = ObjectPattern[create] {items}
+                copy-source-location source, ..
+            @Import[create] do
+                names: resolved-names
+                source: resolved-source
         catch
             if e.message.match /no such file/
                 throw Error "Cannot meta-import module #{node.source.value} at #{node.line}:#{node.column} in #{node.filename}\nProbably mispelled module path"
@@ -219,10 +259,7 @@ ExportResolver =
         ast-root = @livescript.generate-ast code, filename: resolved-path
         
         exports = ast-root.exports
-        items = exports.map -> Identifier[create] name: it.name.value
-        @Import[create] do
-            names: ObjectPattern[create] {items}
-            source: Literal[create] value: "'#{module-path}'"
+        
 
 RemoveNode = JsNode.new (node) -> node.remove!
     ..name = \RemoveNode
@@ -265,6 +302,7 @@ ReplaceImportWithTemporarVariable =
     (copy): -> ^^@
     exec: (_import) ->
         names = TemporarVariable[create] name: \imports, is-import: true
+            copy-source-location _import, ..
         _import.replace-with names
         _import.names = names
     call: (,...args) -> @exec ...args

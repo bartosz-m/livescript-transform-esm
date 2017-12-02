@@ -35,6 +35,49 @@ import
           
 # Question unfold-soak, compile vs compile-node
 # info scope.temporary
+as-array = ->
+    if Array.is-array it
+    then it
+    else [it]
+
+literal-to-string = -> it.value.substring 1, it.value.length - 1
+
+
+  
+extract-name-from-source = ->
+    it
+    |> (.replace /'/gi,'')
+    |> (.split path.sep)
+    |> (.[* - 1])
+    |> path.basename
+
+    
+copy-source-location = (source, target) !->
+    target <<< source{line,column,filename}
+    
+copy-source-location = (source, target) !->
+    if target.line?
+        return
+    {line,column,filename} = source
+    # console.log "copying source location #{source[type]} -> #{target[type]}"
+    unless line?
+        # console.log \deducing source[type]
+        line = 10000000000
+        column = 10000000000
+        children = source.get-children!
+        for child in children
+            line = Math.min line, child.line if child.line
+            column = Math.min column, child.column if child.column
+    # 
+    # unless line? and column?
+    #     console.log 'missing line -----------> ', source[type]
+    #     throw Error "missing line"
+    
+    target <<< {line,column,filename}
+    walk = (node,parent-node) !->
+        unless node.line?
+            node <<< parent-node{line,column,filename}
+
 
 TemporarAssigment = ^^Node
     import-properties .., Creatable
@@ -42,6 +85,8 @@ TemporarAssigment <<<
     (type): \TemporarAssigment
 
     (init): (@{left,right}) !->
+        @left[parent] = @
+        @right[parent] = @
 
     traverse-children: (visitor, cross-scope-boundary) ->
         visitor @left, @, \left
@@ -69,12 +114,6 @@ TemporarAssigment <<<
             v[parent] = @
             @_right = v
 
-as-array = ->
-    if Array.is-array it
-    then it
-    else [it]
-
-literal-to-string = -> it.value.substring 1, it.value.length - 1
 
 
 BaseNode = ^^null
@@ -123,13 +162,6 @@ ExportRules <<<
         replacer = rule.replace matched
         as-array replacer
 
-  
-extract-name-from-source = ->
-    it
-    |> (.replace /'/gi,'')
-    |> (.split path.sep)
-    |> (.[* - 1])
-    |> path.basename
 
 ExpandArrayExports = ^^BaseNode
 ExpandArrayExports <<<
@@ -161,9 +193,12 @@ EnableDefaultExports <<<
         if (cascade = it.local)[type] == \Cascade
         and cascade.input[type] == \Var
         and cascade.input.value == \__es-export-default__
-            cascade.output.lines.0
-    map: (line) ->
-        @ast.Export[create] local: line, alias: Identifier[create] name: \default
+            line: cascade.output.lines.0
+            identifier-source: cascade.input
+    map: ({line,identifier-source}) ->
+        identifier = Identifier[create] name: \default
+            copy-source-location identifier-source, ..
+        @ast.Export[create] local: line, alias: identifier
 
 
 WrapLiteralExports = ^^BaseNode
@@ -180,6 +215,7 @@ WrapLiteralExports <<<
     
     map: (node) ->
         tmp = TemporarVariable[create] name: \export, is-export: true
+            copy-source-location node, ..
         assign = TemporarAssigment[create] left: tmp, right: node.local
         [assign, @ast.Export[create] local: assign.left, alias: node.alias]
 
@@ -193,7 +229,9 @@ WrapAnonymousFunctionExports <<<
             fn
     
     map: (fn) ->
-        [fn, @ast.Export[create] local: Identifier[create] fn{name}, exported: true]
+        identifier = Identifier[create] fn{name}, exported: true
+            copy-source-location fn, ..
+        [fn, @ast.Export[create] local: identifier]
 
 ExpandObjectExports = ^^BaseNode
 ExpandObjectExports <<<
@@ -203,8 +241,9 @@ ExpandObjectExports <<<
         if (object = it.local)[type] == \Obj
             object.items
     map: (items) ->
-        items.map ({key,val}) ~>
+        items.map ({key,val}: prop) ~>
           @ast.Export[create] local: val, alias: key
+              copy-source-location prop, ..
 
 ExpandObjectPatternExports = ^^BaseNode
 ExpandObjectPatternExports <<<
@@ -216,6 +255,7 @@ ExpandObjectPatternExports <<<
     map: (items) ->
         items.map ~>
           @ast.Export[create] local: it
+              copy-source-location it, ..
 
 get-identifier = ->
     Type = it[type]
@@ -234,6 +274,7 @@ ExpandCascadeExports <<<
     map: ({cascade,alias}) ->
         if alias
             identifier = get-identifier cascade.input
+                copy-source-location cascade.input, ..
             # tmp = TemporarVariable[create] name: \tmp is-export: true
             # assign = Assign[create] left: tmp, right: cascade
             ex = @ast.Export[create] local:identifier, alias:alias
@@ -252,6 +293,7 @@ SplitAssignExports <<<
             {alias:it.alias,assign}
     map: ({alias, assign}) ->
         identifier = Identifier[create] name: assign.left.value, exported: true
+            copy-source-location assign.left, ..
         assign.left = identifier
         [assign, @ast.Export[create] {local: assign.left, alias}]
     
@@ -390,6 +432,7 @@ ExtractExportNameFromAssign <<<
 
     map: ({node, assign}) ->
         node.alias = Identifier[create] name: assign.left.value, exported: true
+            copy-source-location assign.left, ..
     
     exec: ->
         exports = OnlyExports.exec it
@@ -434,6 +477,7 @@ ExtractNameFromClass <<<
     map: ({node, name}) ->
         node
             ..alias = Identifier[create] {name}
+                copy-source-location node.local, ..
 
 
 ExtractExportNameFromImport = ^^MatchMap
@@ -449,13 +493,17 @@ ExtractExportNameFromImport <<<
 
     map: ({_import, name}) ->
         tmp = TemporarVariable[create] name: \import, is-import: true
+            copy-source-location _import, ..
         # assign = Assign[create] do
         #     left: tmp
         #     right: _import
-        _import.names = tmp    
+        # console.log \name _import
+        _import.names = tmp
+        export-id = Identifier[create] name: name
+            copy-source-location _import.names, ..
         _export = @ast.Export[create] do
             local: tmp #Identifier[create] name: name
-            alias: Identifier[create] name: name
+            alias: export-id
         [_import, _export]
         # name =  path.basename name.replace /'/gi ''
         # @ast.ReExport[create] do
@@ -481,10 +529,12 @@ is-expression = ->
         node = parent-node
     result
 
+
 ReplaceImportWithTemporarVariable = BaseNode with
     name: \ReplaceImportWithTemporarVariable
     exec: (_import) ->
         names = TemporarVariable[create] name: \import, is-import: true
+            copy-source-location _import, ..
         _import.replace-with names
         _import.names = names
 
@@ -555,7 +605,7 @@ AddExportsDeclarations = JsNode.copy!
         exports-declaration = if variables-to-declare.length
         then "var #{variables-to-declare.map (.compile {}) .join ','};\n"
         else ""        
-        sn @, exports-declaration, ...exports, result
+        sn @, exports-declaration, ...exports, ...result.children
 
 CheckIfOnlyDefaultExports = ^^BaseNode
 CheckIfOnlyDefaultExports <<<
@@ -583,8 +633,10 @@ MarkAsScript <<<
 AddImportsDeclarations = JsNode.copy!
     ..name = \AddImportsDeclarations
     ..js-function = (result) ->
-        imports = @imports.map -> sn it, (it.compile {}), '\n'
-        sn @, ...imports, result
+        imports = []
+        for imp in @imports
+              imports.push (imp.compile {}), '\n'
+        sn @, ...imports, ...result.children
 
 export default TransformESM = ^^Plugin
 TransformESM <<<
