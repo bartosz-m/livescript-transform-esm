@@ -74,7 +74,7 @@ as-array = ->
     then it
     else [it]
 
-convert-literal-to-string = -> it.value.substring 1, it.value.length - 1
+literal-to-string = -> it.value.substring 1, it.value.length - 1
 
 
 BaseNode = ^^null
@@ -383,7 +383,7 @@ ExtractExportNameFromLiteral <<<
     match: ->
         if(assign = it.local)[type] == \Literal
         and not it.alias?
-            {node:it, name: convert-literal-to-string it.local}
+            {node:it, name: literal-to-string it.local}
 
     map: ({node, name}) ->
         node.alias = Identifier[create] name: name
@@ -396,9 +396,9 @@ ExtractExportNameFromLiteral <<<
                 
         it
 
-ExtractExportNameFromClass = ^^BaseNode
-ExtractExportNameFromClass <<<
-    name: \ExtractExportNameFromClass
+ExtractNameFromClass = MatchMap[copy]!
+ExtractNameFromClass <<<
+    name: \ExtractNameFromClass
     ast: {}
     (copy): -> ^^@
     match: ->
@@ -407,15 +407,9 @@ ExtractExportNameFromClass <<<
             {node:it, name: _class.title.value}
 
     map: ({node, name}) ->
-        node.alias = Identifier[create] name: name
-    
-    exec: ->
-        exports = OnlyExports.exec it
-        for e in exports
-            if matched = @match e
-                @map matched
-                
-        it
+        node
+            ..alias = Identifier[create] {name}
+
 
 ExtractExportNameFromImport = ^^MatchMap
 ExtractExportNameFromImport <<<
@@ -568,13 +562,12 @@ AddImportsDeclarations = JsNode.copy!
         sn @, ...imports, result
 
 export default TransformESM = ^^Plugin
-    module.exports = ..
-
-    ..name = 'transform-esm'
+TransformESM <<<
+    name: 'transform-esm'
     
-    ..config = {}
+    config: {}
 
-    ..enable = !->
+    enable: !->
         special-lex = JsNode[copy]!
             ..js-function = (lexed) ->
                 result = []
@@ -638,6 +631,7 @@ export default TransformESM = ^^Plugin
             ..next = ExportNodes = MatchMapCascadeNode[copy]!
         
         ExportNodes
+            ..append ExtractNameFromClass
             ..append ExpandArrayExports with @livescript{ast}
             ..append ExpandBlockExports with @livescript{ast}
             ..append EnableDefaultExports with @livescript{ast}
@@ -646,29 +640,25 @@ export default TransformESM = ^^Plugin
             ..append ExtractExportNameFromImport with @livescript{ast}
         @livescript.expand
             ..append InsertExportNodes with @livescript{ast}
-            # ..append InsertDynamicImport with @livescript{ast}
             ..append EnableExports
         @livescript.postprocess-ast
             ..append RegisterExportsOnRoot
         
         if @config.format != \cjs
-            ExportNodes
+            ExportNodes                
                 ..append WrapLiteralExports with @livescript{ast}
                 ..append WrapAnonymousFunctionExports with @livescript{ast}
                 ..append SplitAssignExports with @livescript{ast}
             @livescript.postprocess-ast
                 ..append MoveExportsToTop
-                ..append DisableImplicitExportVariableDeclaration                                
+                ..append DisableImplicitExportVariableDeclaration
             @livescript.ast.Block.Compile.append AddExportsDeclarations
         else
             @livescript.postprocess-ast
                 ..append ExtractExportNameFromAssign
                 ..append ExtractExportNameFromLiteral
-                ..append ExtractExportNameFromClass
                 ..append CheckIfOnlyDefaultExports
                 ..append MarkAsScript
-            ExtractExportNameFromClass
-            # @livescript.ast.Block.Compile.append MarkAsScript
             MyExport.compile[as-node].js-function = (o) ->
                 name = @name.compile o
                 inner = (@local.compile o)

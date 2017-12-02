@@ -7,6 +7,8 @@
     "prepublishOnly": "npm run build && npm run test",
     "test": "node_modules/.bin/lsc -r livescript-transform-object-create test",
     "build": "node_modules/.bin/lsc dev/build",
+    "clean": "rm -r lib",
+    "retest": "npm run build && npm test",
     "develop": "node_modules/.bin/lsc dev/watch",
     "update-dependencies": "ncu -a && npm install && git add . && git commit -m \"Updated dependencies\" && npm version patch && npm publish"
   },
