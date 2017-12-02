@@ -68,6 +68,7 @@ copy-source-location = (source, target) !->
         for child in children
             line = Math.min line, child.line if child.line
             column = Math.min column, child.column if child.column
+            filename = filename or child.filename
     # 
     # unless line? and column?
     #     console.log 'missing line -----------> ', source[type]
@@ -455,6 +456,7 @@ ExtractExportNameFromLiteral <<<
 
     map: ({node, name}) ->
         node.alias = Identifier[create] name: name
+            copy-source-location node.local, ..
     
     exec: ->
         exports = OnlyExports.exec it
