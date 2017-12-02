@@ -29,7 +29,7 @@ Import[as-node]import-enumerable do
     traverse-children: (visitor, cross-scope-boundary) ->
         visitor @names, @, \names  if @names
         visitor @source, @, \source if @source
-        @names.traverse-children ...& @names
+        @names.traverse-children ...& if @names
         @source.traverse-children ...& if @source
     
     compile: (o) ->
