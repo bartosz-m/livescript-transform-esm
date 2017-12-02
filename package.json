@@ -7,6 +7,7 @@
     "prepublishOnly": "npm run build && npm run test",
     "test": "node_modules/.bin/lsc -r livescript-transform-object-create test",
     "build": "node_modules/.bin/lsc dev/build",
+    "self-build": "node_modules/.bin/lsc dev/self-build",
     "clean": "rm -r lib",
     "retest": "npm run build && npm test",
     "develop": "node_modules/.bin/lsc dev/watch",
