@@ -11,8 +11,8 @@ export { PI }
 export { MEANING_OF_LIFE }
 export { E }
 export { fn }
-export { export4$ }
-export { export5$ }
+export { export4$ as Class }
+export { export5$ as BarClass }
 export { center }
 export { center2 }
 (function(){

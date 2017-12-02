@@ -15,13 +15,26 @@ DynamicImport[as-node]import-enumerable do
     
     (init): (@{sources}) ->
       
-    children-names: <[ source ]>
+    children-names: []
+    sources:~
+        -> @_sources
+        (v) ->
+            v?[parent] = @
+            @_sources = v
     
-    traverse-children: (visitor, cross-scope-boundary)->
+    traverse-children: (visitor, cross-scope-boundary) !->
         for child-name in @children-names when child = @[child-name]
-            visitor child, @, child-name
+            if \Array == typeof! child
+                for v,k in child
+                    visitor v, @, child-name, k
+            else
+                visitor child, @, child-name
         for child-name in @children-names when child = @[child-name]
-            child.traverse-children ...
+            if \Array == typeof! child
+                for v,k in child
+                    v.traverse-children ...
+            else
+                child.traverse-children ...
             
     compile: (o) ->
         sources = @sources.map (.compile o)

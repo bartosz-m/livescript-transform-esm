@@ -44,6 +44,12 @@ Export[as-node]import-enumerable do
         (v) ->
             v[parent] = @
             @_local = v
+    
+    alias:~
+        -> @_alias
+        (v) ->
+            v?[parent] = @
+            @_alias = v
             
     replace-child: (child, node) ->
         for child-name in @children-names when @[child-name] == child
