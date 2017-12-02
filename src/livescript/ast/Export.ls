@@ -35,6 +35,7 @@ Export[as-node]import-enumerable do
                 else [" as default" ]
             else []
         inner = (@local.compile o)
+        
         @to-source-node parts: [ "export { ", inner, ...alias, " }" ]
         
     terminator: ';'

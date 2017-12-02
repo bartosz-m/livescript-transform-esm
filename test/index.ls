@@ -1,6 +1,6 @@
 require! {
     assert
-    fs
+    \fs-extra : fs
     path
     \diff-lines
     livescript
@@ -47,13 +47,15 @@ tests = fs.readdir-sync __dirname .filter -> it != \index.ls and it.match /\.ls$
 
 
 
-for test in tests# when test.match /^issue-named/
+for test in tests# when test.match /^issue-export-as-cascade/
     console.log "testing #{test}"
     try
         code-file = path.join __dirname, test
         output-file = code-file.replace /\.ls$/ '-expected.js'
         module-file = code-file.replace /\.ls$/ '-expected.mjs'
         ls-code = fs.read-file-sync code-file, \utf8
+        fs.ensure-file-sync output-file
+        fs.ensure-file-sync module-file
         cjs-code = fs.read-file-sync output-file, \utf8
         ems-code = fs.read-file-sync module-file, \utf8
         test-compilation {compiler: esm-compiler, ls-code, js-code:ems-code, filename: code-file}

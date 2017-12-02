@@ -217,6 +217,31 @@ ExpandObjectPatternExports <<<
         items.map ~>
           @ast.Export[create] local: it
 
+get-identifier = ->
+    Type = it[type]
+    switch Type
+    | \Assign or Assign[type] => get-identifier it.left
+    | \Var => Identifier[create] name: it.value
+    | otherwise => throw Error "Cannot deduce identifier at #{it.line}:#{it.column}"
+
+ExpandCascadeExports = MatchMap[copy]!
+ExpandCascadeExports <<<
+    name: \ExpandCascadeExports
+    ast: {}
+    match: ->
+        if (cascade = it.local)[type] == \Cascade
+            {cascade, alias: it.alias}
+    map: ({cascade,alias}) ->
+        if alias
+            identifier = get-identifier cascade.input
+            # tmp = TemporarVariable[create] name: \tmp is-export: true
+            # assign = Assign[create] left: tmp, right: cascade
+            ex = @ast.Export[create] local:identifier, alias:alias
+            # [assign, ex]
+            [cascade, ex]
+        else
+            throw Error "Cannot detect export alias at #{cascade.line}:#{cascade.column}"
+
 SplitAssignExports = ^^BaseNode
 SplitAssignExports <<<
     name: \SplitAssignExports
@@ -522,6 +547,7 @@ sn = (node = {}, ...parts) ->
 AddExportsDeclarations = JsNode.copy!
     ..name = \AddExportsDeclarations
     ..js-function = (result) ->
+        # console.log @exports.0.local
         exports = @exports.map ~> sn it, (it.compile scope: @scope), '\n'
         get-variable-name = -> it.local.compile {}
         variables-to-declare = @exports
@@ -529,7 +555,7 @@ AddExportsDeclarations = JsNode.copy!
             .map -> it.local
         exports-declaration = if variables-to-declare.length
         then "var #{variables-to-declare.map (.compile {}) .join ','};\n"
-        else ""
+        else ""        
         sn @, exports-declaration, ...exports, result
 
 CheckIfOnlyDefaultExports = ^^BaseNode
@@ -649,6 +675,7 @@ TransformESM <<<
                 ..append WrapLiteralExports with @livescript{ast}
                 ..append WrapAnonymousFunctionExports with @livescript{ast}
                 ..append SplitAssignExports with @livescript{ast}
+                ..append ExpandCascadeExports with @livescript{ast}
             @livescript.postprocess-ast
                 ..append MoveExportsToTop
                 ..append DisableImplicitExportVariableDeclaration
@@ -672,10 +699,10 @@ TransformESM <<<
                 if @override-module
                     named-default-export = if @local[type] == \Literal
                         then []
-                        else [@terminator, "\n", o.indent, "Object.defineProperty(module.exports, '__default__', {enumerable:false, value: module.exports})"]
-                    @to-source-node parts: [ "module.exports = " , inner, ...named-default-export ] 
+                        else [@local.terminator, "\n", o.indent, "Object.defineProperty(module.exports, '__default__', {enumerable:false, value: module.exports})"]
+                    @to-source-node parts: [ "module.exports = " , inner, ...named-default-export ]               
                 else
-                    @to-source-node parts: [ "exports#{property} = " , inner, ]
+                    @to-source-node parts: [ "exports#{property} = " , inner ]
                 
         
         
