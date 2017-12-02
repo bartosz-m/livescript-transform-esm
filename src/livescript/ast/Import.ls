@@ -14,6 +14,17 @@ Import[as-node]import-enumerable do
     (type): \Import.ast.livescript
     
     (init): (@{names, source,all}) ->
+      
+    names:~
+        -> @_names
+        (v) ->
+            v?[parent] = @
+            @_names = v
+    source:~
+        -> @_source
+        (v) ->
+            v?[parent] = @
+            @_source = v
     
     traverse-children: (visitor, cross-scope-boundary) ->
         visitor @names, @, \names  if @names
