@@ -547,7 +547,6 @@ sn = (node = {}, ...parts) ->
 AddExportsDeclarations = JsNode.copy!
     ..name = \AddExportsDeclarations
     ..js-function = (result) ->
-        # console.log @exports.0.local
         exports = @exports.map ~> sn it, (it.compile scope: @scope), '\n'
         get-variable-name = -> it.local.compile {}
         variables-to-declare = @exports

@@ -26,7 +26,7 @@ Import[as-node]import-enumerable do
             v?[parent] = @
             @_source = v
     
-    traverse-children: (visitor, cross-scope-boundary) ->
+    traverse-children: (visitor, cross-scope-boundary) !->
         visitor @names, @, \names  if @names
         visitor @source, @, \source if @source
         @names.traverse-children ...& if @names
