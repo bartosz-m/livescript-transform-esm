@@ -239,7 +239,7 @@ ExpandMetaImport <<<
                 source: resolved-source
         catch
             if e.message.match /no such file/
-                throw Error "Cannot meta-import module #{node.source.value} at #{node.line}:#{node.column} in #{node.filename}\nProbably mispelled module path"
+                throw Error "Cannot meta-import module #{node.source.value} at #{node.line}:#{node.column} in #{node.filename}\nProbably mispelled module path. #{e.message}"
             else
                 throw e
 
@@ -247,6 +247,9 @@ ExportResolver =
     livescript: null
     Import: Import
     resolve: (module-path, current-path) ->
+        #remove protocol if any
+        module-path = module-path.replace /^\w+\:\/{0,2}/ ''
+        current-path = current-path.replace /^\w+\:\/{0,2}/ ''
         cwd = path.dirname current-path
         resolved-path = path.resolve cwd, module-path
         unless module-path.0 == '.' or module-path.match /\.js$/
