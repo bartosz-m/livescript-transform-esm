@@ -119,3 +119,7 @@ Globs are expanded during compilation making them transparent for other tools an
   }).call(this);
 ```
 
+## Atom integration
+If you are using atom editor you may be interested in [livescript-ide-preview](https://atom.io/packages/livescript-ide-preview) package witch together with [atom-livescript-provider](https://atom.io/packages/atom-livescript-provider) enable realtime preview of transpiled code.  
+
+![](https://github.com/bartosz-m/livescript-ide-preview/raw/master/doc/assets/screenshot-01.gif)
