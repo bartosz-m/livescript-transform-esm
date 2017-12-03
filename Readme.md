@@ -6,12 +6,16 @@ Transform for livescript adding support for modules.
 
 First install livescript and transfrom-esm
 
-npm i -D https://github.com/gkz/LiveScript livescript-transform-esm
+    npm i -D https://github.com/gkz/LiveScript livescript-transform-esm
 
-next assuming transpilation from src to tmp
 
-node_modules/.bin/lsc -r livescript-transform-esm/register -c -o tmp src 
+to transpile from `src` to `tmp`
 
+    node_modules/.bin/lsc -r livescript-transform-esm/register -c -o tmp src
+
+to run script use CommonJS module format option e.g. running `test/index.ls`
+
+    node -r livescript-transform-esm/register/cjs -c -o tmp src
 
 # Features
 ## Injecting imports to scope
