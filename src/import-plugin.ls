@@ -239,7 +239,7 @@ ExpandMetaImport <<<
                 source: resolved-source
         catch
             if e.message.match /no such file/
-                throw Error "Cannot meta-import module #{node.source.value} at #{node.line}:#{node.column} in #{node.filename}\nProbably mispelled module path. #{e.message}"
+                throw Error "Cannot meta-import module #{node.source.value} in #{node.filename}:#{node.line}:#{node.column}\nProbably mispelled module path. #{e.message}"
             else
                 throw e
 
