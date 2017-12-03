@@ -31,7 +31,7 @@ InsertDynamicImport <<<
 export default DynamicImportTransform = ^^Plugin
     module.exports = ..
 
-    ..name = 'dynami-import'
+    ..name = 'dynamic-import'
     
     ..config = {}
 

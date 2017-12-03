@@ -9,6 +9,7 @@ import
     \livescript-compiler/lib/core/symbols : { init }
 
 export default DynamicImport = Node[copy]!
+DynamicImport[as-node]name = \DynamicImport
 
 DynamicImport[as-node]import-enumerable do
     (type): \DynamicImport.ast.livescript
