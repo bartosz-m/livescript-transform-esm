@@ -31,6 +31,7 @@ import
     \./nodes/MatchMap
     \./import-plugin
     \./dynamic-import-plugin
+    \./utils : ...
 
           
 # Question unfold-soak, compile vs compile-node
@@ -51,33 +52,7 @@ extract-name-from-source = ->
     |> (.[* - 1])
     |> path.basename
 
-    
-copy-source-location = (source, target) !->
-    target <<< source{line,column,filename}
-    
-copy-source-location = (source, target) !->
-    if target.line?
-        return
-    {line,column,filename} = source
-    # console.log "copying source location #{source[type]} -> #{target[type]}"
-    unless line?
-        # console.log \deducing source[type]
-        line = 10000000000
-        column = 10000000000
-        children = source.get-children!
-        for child in children
-            line = Math.min line, child.line if child.line
-            column = Math.min column, child.column if child.column
-            filename = filename or child.filename
-    # 
-    # unless line? and column?
-    #     console.log 'missing line -----------> ', source[type]
-    #     throw Error "missing line"
-    
-    target <<< {line,column,filename}
-    walk = (node,parent-node) !->
-        unless node.line?
-            node <<< parent-node{line,column,filename}
+
 
 
 TemporarAssigment = ^^Node

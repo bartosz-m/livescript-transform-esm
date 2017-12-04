@@ -1,7 +1,7 @@
-require! {
-    assert
-    path
-    fs
+import
+    \assert
+    \path
+    \fs
     \globby
     \livescript-compiler/lib/livescript/Plugin
     \livescript-compiler/lib/livescript/ast/symbols : { parent, type }
@@ -22,7 +22,7 @@ require! {
     \livescript-compiler/lib/core/symbols : {create}
     \./livescript/ast/Import
     \./livescript/ast/Export
-}
+    \./utils : ...
 
 literal-to-string = -> it.value.substring 1, it.value.length - 1
 
@@ -35,10 +35,10 @@ is-expression = ->
             or (parent-node[type] == \Assign and parent-node.right == node)
         node = parent-node
     result
-    
-    
-copy-source-location = (source, target) !->
-    target <<< source{line,column,filename}
+# 
+# 
+# copy-source-location = (source, target) !->
+#     target <<< source{line,column,filename}
 
 extract-name-from-source = ->
     it
