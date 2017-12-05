@@ -11,15 +11,10 @@ import
     \livescript-compiler/lib/livescript/ast/Assign
     \livescript-compiler/lib/livescript/ast/Identifier
     \livescript-compiler/lib/livescript/ast/TemporarVariable
-    \livescript-compiler/lib/nodes/ConditionalNode
-    \livescript-compiler/lib/nodes/symbols : {copy,as-node}
-    \livescript-compiler/lib/nodes/JsNode
-    \livescript-compiler/lib/nodes/TrueNode
-    \livescript-compiler/lib/nodes/IfNode
-    \livescript-compiler/lib/nodes/identity
-    \livescript-compiler/lib/nodes/components/Copiable
-    \livescript-compiler/lib/nodes/MatchMapCascadeNode
-    \livescript-compiler/lib/core/symbols : {create}
+    \js-nodes : { ConditionalNode, JsNode, TrueNode, IfNode, identity, MatchMapCascadeNode }
+    \js-nodes/symbols : { copy, as-node }
+    \js-nodes/components/Copiable
+    \livescript-compiler/lib/core/symbols : { create }
     \./livescript/ast/Import
     \./livescript/ast/Export
     \./utils : ...
@@ -238,8 +233,15 @@ ExpandMetaImport <<<
                 names: resolved-names
                 source: resolved-source
         catch
-            if e.message.match /no such file/
-                throw Error "Cannot meta-import module #{node.source.value} in #{node.filename}:#{node.line}:#{node.column}\nProbably mispelled module path. #{e.message}"
+            if m = e.message.match /ENOENT, no such file or directory '([^']+)'/
+                error = Error "Cannot extract exports of module #{node.source.value} in #{node.filename}:#{node.line}:#{node.column}\nNo such file #{m.1}\nProbably mispelled module path. #{e.message}"
+                error.hash =
+                    loc:
+                        first_line: node.first_line ? node.line
+                        first_column: node.first_column ? node.column
+                        last_line: node.last_line ? node.line
+                        last_column: node.last_column ? node.column
+                throw error
             else
                 throw e
 

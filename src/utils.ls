@@ -1,7 +1,7 @@
 export copy-source-location = (source, target) !->
     if target.line?
         return
-    {first-line,first-column,last-line,last-column,line,column,filename}  = source
+    {first_line,first_column,last_line,last_column,line,column,filename}  = source
     unless line?
         first_line = line = 10000000000
         first_column = column = 10000000000
@@ -19,4 +19,4 @@ export copy-source-location = (source, target) !->
             last_column = Math.max last_column, child.last_column if child.last_column
             filename = filename or child.filename
         
-    target <<< {first-line,first-column,last-line,last-column,line,column,filename}
+    target <<< {first_line,first_column,last_line,last_column,line,column,filename}

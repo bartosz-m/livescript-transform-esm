@@ -2,8 +2,8 @@ import
     \assert
     \livescript-compiler/lib/livescript/ast/Node
     \livescript-compiler/lib/livescript/ast/symbols : { parent, type }
-    \livescript-compiler/lib/nodes/symbols : { copy, js, as-node }
-    \livescript-compiler/lib/nodes/ObjectNode
+    \js-nodes/symbols : { copy, js, as-node }
+    \js-nodes/ObjectNode
     \livescript-compiler/lib/core/symbols : {init}
 
 export default Export = Node[copy]!

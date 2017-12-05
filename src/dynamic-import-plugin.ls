@@ -4,8 +4,8 @@ import
     \assert
     \livescript-compiler/lib/livescript/Plugin
 
-    \livescript-compiler/lib/nodes/JsNode
-    \livescript-compiler/lib/nodes/symbols : { copy, as-node }
+    \js-nodes : { JsNode }
+    \js-nodes/symbols : { copy, as-node }
     \livescript-compiler/lib/core/symbols : {create, init}
     \./livescript/ast/Export
     \./livescript/ast/ReExport

@@ -1,9 +1,9 @@
 import
     \assert
     \livescript-compiler/lib/livescript/ast/Node
-    \livescript-compiler/lib/nodes/JsNode
-    \livescript-compiler/lib/nodes/symbols : { copy, js, as-node }
-    \livescript-compiler/lib/nodes/ObjectNode
+    \js-nodes/JsNode
+    \js-nodes/symbols : { copy, js, as-node }
+    \js-nodes/ObjectNode
     \livescript-compiler/lib/livescript/ast/symbols : { parent, type }
     \livescript-compiler/lib/livescript/ast/symbols : { parent, type }
     \livescript-compiler/lib/core/symbols : { init }

@@ -36,6 +36,7 @@
   },
   "dependencies": {
     "globby": "^7.1.1",
-    "livescript-compiler": "0.0.26"
+    "js-nodes": "0.0.1",
+    "livescript-compiler": "0.0.29"
   }
 }

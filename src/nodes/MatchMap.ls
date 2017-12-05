@@ -1,7 +1,7 @@
 import 
-    \livescript-compiler/lib/nodes/symbols : { copy }
-    \livescript-compiler/lib/nodes/TrueNode
-    \livescript-compiler/lib/nodes/identity
+    \js-nodes/symbols : { copy }
+    \js-nodes/TrueNode
+    \js-nodes/identity
     
     
 export default MatchMap = ^^null

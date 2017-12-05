@@ -16,13 +16,9 @@ import
     \livescript-compiler/lib/livescript/ast/Pattern
     \livescript-compiler/lib/livescript/ast/TemporarVariable
     \livescript-compiler/lib/livescript/Plugin
-    \livescript-compiler/lib/nodes/MatchMapCascadeNode
-    \livescript-compiler/lib/nodes/ConditionalNode
-    \livescript-compiler/lib/nodes/IfNode
-    \livescript-compiler/lib/nodes/identity
-    \livescript-compiler/lib/nodes/TrueNode
-    \livescript-compiler/lib/nodes/JsNode
-    \livescript-compiler/lib/nodes/symbols : { copy, as-node }
+    \js-nodes/MatchMapCascadeNode
+    \js-nodes : { ConditionalNode, IfNode, identity, TrueNode, JsNode }
+    \js-nodes/symbols : { copy, as-node }
     \livescript-compiler/lib/livescript/SourceNode
     \livescript-compiler/lib/core/symbols : {create, init}
     \./livescript/ast/Export
