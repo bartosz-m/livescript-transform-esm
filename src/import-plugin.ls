@@ -30,10 +30,7 @@ is-expression = ->
             or (parent-node[type] == \Assign and parent-node.right == node)
         node = parent-node
     result
-# 
-# 
-# copy-source-location = (source, target) !->
-#     target <<< source{line,column,filename}
+
 
 extract-name-from-source = ->
     it

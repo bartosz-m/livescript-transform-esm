@@ -318,17 +318,6 @@ AssignFilename =
       node{filename} = node[parent]
       node
 
-copy-source-location = (source, target) !->
-    {line,column} = source
-    unless line?
-        line = 10000000000
-        column = 10000000000
-        children = source.get-children!
-        for child in children
-            line = Math.min line, child.line if child.line
-            column = Math.min column, child.column if child.column
-    target <<< {line,column}
-
 ConditionalMutate = ^^BaseNode
 ConditionalMutate <<<
     name: \ConditionalMutate
