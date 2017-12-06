@@ -29,7 +29,6 @@ import
     \./dynamic-import-plugin
     \./utils : ...
 
-          
 # Question unfold-soak, compile vs compile-node
 # info scope.temporary
 as-array = ->
@@ -625,34 +624,6 @@ TransformESM <<<
                             ++i # skip default
                             [,, ...rest] = l = lexed[i]
                             result.push [\ID \__es-export-default__ ...rest]
-                    else if l.0 == ":"
-                    and i + 1 < lexed.length
-                    and lexed[i + 1].0 == '...'
-                        result.push l
-                        ++i
-                        [,, ...rest] = l = lexed[i]
-                        result.push [ \ID \__import-to-scope__ ...rest ]
-                    else if l.0 == ":"
-                    and i + 3 < lexed.length
-                    and lexed[i + 1].0 == '{'
-                    and lexed[i + 2].0 == '...'
-                    and lexed[i + 3].0 == '}'
-                        result.push l
-                        ++i
-                        ++i #skip {
-                        [,, ...rest] = l = lexed[i]
-                        result.push [ \ID \__import-to-scope__ ...rest ]
-                        ++i #skip }
-                    else if l.0 == \DECL and l.1 == \import
-                    and i + 3 < lexed.length
-                    and lexed[i + 1].0 == \INDENT
-                    and lexed[i + 2].0 == \...
-                    and lexed[i + 3].0 == \INDENT
-                        [,, ...rest] = l
-                        result.push [ \DECL \importAll ...rest ]
-                        i++
-                        result.push lexed[i]
-                        i++ # INDENT
                     else
                         result.push l
                 result
@@ -707,15 +678,15 @@ TransformESM <<<
                 property = if @default
                     then "['__default__']"
                     else if @name.reserved
-                        then "[#{@name.compile o}]"
-                        else ".#{name}"
+                        then [ \[ (@name.compile o), \] ]
+                        else [ \. name ]
                 if @override-module
                     named-default-export = if @local[type] == \Literal
                         then []
                         else [@local.terminator, "\n", o.indent, "Object.defineProperty(module.exports, '__default__', {enumerable:false, value: module.exports})"]
                     @to-source-node parts: [ "module.exports = " , inner, ...named-default-export ]               
                 else
-                    @to-source-node parts: [ "exports#{property} = " , inner ]
+                    @to-source-node parts: [ "exports", ...property," = " , inner ]
                 
         
         

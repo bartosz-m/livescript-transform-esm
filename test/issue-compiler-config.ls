@@ -4,4 +4,5 @@ export default config =
             config: format: \cjs
           ...
 import \livescript-transform-object-create
-import \livescript-transform-implicit-async
+import
+    \livescript-transform-implicit-async
