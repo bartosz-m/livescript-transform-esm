@@ -106,11 +106,15 @@ InsertImportNodes <<<
             throw Error "Empty import at #{chain.line}:#{chain.column}"
         # new-chain = ^^ Object.get-prototype-of chain
         if args.length > 0
-        and args.0[type] == \Splat
-            [,...items]  = args
-            items.map ~>
-                @ast.EsImport[create] source: it, all: true
-                    copy-source-location it, ..
+            if args.0[type] == \Splat
+                [,...items]  = args
+                items.map ~>
+                    @ast.EsImport[create] source: it, all: true
+                        copy-source-location it, ..
+            else
+              args.map ~>
+                  @ast.EsImport[create] source: it
+                      copy-source-location it, ..
         else
             @ast.EsImport[create] source: args.0
             # ..[parent] = new-chain
@@ -121,6 +125,31 @@ InsertImportNodes <<<
         # new-chain <<< chain
         #     ..head = tails.shift!
         #     ..tails = tails
+        
+InsertImportBlock = ^^MatchMap
+InsertImportBlock <<<
+    name: \InsertImportBlock
+    ast: {}
+    match: (chain)->
+        if chain[type] == \Chain
+        and chain.head.value == \__static-import__
+            args: chain.tails.0.args
+            chain: chain
+
+    map: ({chain,args}) -> 
+        debug.log @name
+        debug.log chain[parent]
+        if args.length == 0
+            throw Error "Empty import at #{chain.line}:#{chain.column}"
+        # new-chain = ^^ Object.get-prototype-of chain
+        if args.length > 0
+        and args.0[type] == \Splat
+            [,...items]  = args
+            items.map ~>
+                @ast.EsImport[create] source: it, all: true
+                    copy-source-location it, ..
+        else
+            @ast.EsImport[create] source: args.0
 
 ExtractImportFromAssign = ^^MatchMap
 ExtractImportFromAssign <<<

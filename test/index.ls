@@ -47,7 +47,7 @@ tests = fs.readdir-sync __dirname .filter -> it != \index.ls and it.match /\.ls$
 
 
 
-for test in tests# when test.match /^import-to-scope\./
+for test in tests# when test.match /^issue\./
     console.log "testing #{test}"
     try
         code-file = path.join __dirname, test
