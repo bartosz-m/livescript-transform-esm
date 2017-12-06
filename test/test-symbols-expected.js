@@ -1,4 +1,4 @@
-var { init, create } = require('./symbols');
+var symbols = require('./symbols');
 (function(){
-  console.log(create);
+
 }).call(this);

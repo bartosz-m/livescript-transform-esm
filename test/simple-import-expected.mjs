@@ -1,6 +1,6 @@
 import Vector from './modules/Vector';
 import { PI, E } from './modules/Math';
-import { Bar, Foo } from './modules/foo';
+import * as foo from './modules/foo';
 (function(){
 
 }).call(this);

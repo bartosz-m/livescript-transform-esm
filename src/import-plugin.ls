@@ -109,7 +109,7 @@ InsertImportNodes <<<
             if args.0[type] == \Splat
                 [,...items]  = args
                 items.map ~>
-                    @ast.EsImport[create] source: it, all: true
+                    @ast.EsImport[create] source: it, inject-to-scope: true
                         copy-source-location it, ..
             else
               args.map ~>
@@ -146,7 +146,7 @@ InsertImportBlock <<<
         and args.0[type] == \Splat
             [,...items]  = args
             items.map ~>
-                @ast.EsImport[create] source: it, all: true
+                @ast.EsImport[create] source: it, inject-to-scope: true
                     copy-source-location it, ..
         else
             @ast.EsImport[create] source: args.0
@@ -212,7 +212,7 @@ InsertScopeImports <<<
         const {lines} = cascade.output
         if lines.length == 0
             throw Error "Empty import at #{cascade.line}:#{cascade.column}"
-        lines.map ~> @ast.EsImport[create] source: it, all: \all
+        lines.map ~> @ast.EsImport[create] source: it, inject-to-scope: true
     
 
 
@@ -256,7 +256,7 @@ ExpandObjectImports <<<
                 if it.key
                     names: it.val
                     source: it.key ? identifier-from-literal it.val
-                    all: it.val.value == \__import-to-scope__
+                    inject-to-scope: it.val.value == \__import-to-scope__
                 else
                     names: identifier-from-literal it.val
                     source: it.val
@@ -364,7 +364,7 @@ ExpandMetaImport <<<
     export-resolver: null
     
     match: (node) ->
-        if node.all
+        if node.inject-to-scope
             node
     
     map: ({source,filename}: node) ->
@@ -636,6 +636,6 @@ export default EnableImports = ^^Plugin
             EsImport.compile[as-node]js-function = (o) ->
                 names = @names.compile o
                 required = "require(#{@source.compile o})"
-                unless @names.items
+                unless @names.items or @all
                     required = "(#{required}['__default__'] || #{required})"
                 @to-source-node parts: [ "var ", names, " = ", required, @terminator ]

@@ -1,4 +1,4 @@
-import { init, create } from './symbols';
+import * as symbols from './symbols';
 (function(){
-  console.log(create);
+
 }).call(this);

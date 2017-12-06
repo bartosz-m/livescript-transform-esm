@@ -13,7 +13,7 @@ export default Import = Node[copy]!
 Import[as-node]import-enumerable do
     (type): \Import.ast.livescript
     
-    (init): (@{names, source,all}) ->
+    (init): (@{names, source,all,inject-to-scope}) ->
       
     names:~
         -> @_names
@@ -34,6 +34,10 @@ Import[as-node]import-enumerable do
     
     compile: (o) ->
         names = @names.compile o
-        @to-source-node parts: [ "import ", names, " from ", (@source.compile o), @terminator ]
+        if @all
+            @to-source-node parts: [ "import * as ", names, " from ", (@source.compile o), @terminator ]
+        else
+            @to-source-node parts: [ "import ", names, " from ", (@source.compile o), @terminator ]
+            
     
     terminator: ';'
