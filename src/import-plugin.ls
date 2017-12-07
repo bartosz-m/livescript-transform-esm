@@ -310,7 +310,7 @@ ExpandGlobImport <<<
     
     match: (node) ->
         if (literal = node.source)[type] == \Literal
-        and literal.value.match /\*/
+        and globby.has-magic literal.value
         and not is-expression node
             glob = literal-to-string literal
             filename =   node.filename.replace /^\w+\:\/{0,2}/ ''
@@ -319,8 +319,13 @@ ExpandGlobImport <<<
             .map ->
                 without-ext = it.replace (path.extname it), ''
                 './' + without-ext
+            path-with-index = globby.sync "#{glob}/index.*", cwd: module-path
+            .map ->
+                without-ext = it.replace /index\.[^.]+/ ''
+                './' + without-ext
             if paths.length == 0
                 throw Error "Do not fout any module at #{glob} starting at #{module-path}"
+            paths = paths ++ path-with-index
             {paths, literal}
     
     map: ({paths, literal}) ->
@@ -339,7 +344,7 @@ ExpandGlobImportAsObject <<<
     
     match: (node) ->
         if (literal = node.source)[type] == \Literal
-        and literal.value.match /\*/
+        and globby.has-magic literal.value
         and is-expression node
             glob = literal-to-string literal
             #remove protocol if any
