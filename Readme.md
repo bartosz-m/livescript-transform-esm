@@ -1,5 +1,7 @@
 Transform for livescript adding support for modules.
 
+**Repository** on [github](https://github.com/bartosz-m/livescript-transform-esm)
+
 # Usage
 
 ## CLI
