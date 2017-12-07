@@ -349,8 +349,13 @@ ExpandGlobImportAsObject <<<
             .map ->
                 without-ext = it.replace (path.extname it), ''
                 './' + without-ext
+            path-with-index = globby.sync "#{glob}/index.*", cwd: module-path
+            .map ->
+                without-ext = it.replace /index\.[^.]+/ ''
+                './' + without-ext
             if paths.length == 0
                 throw Error "Do not fout any module at #{glob} starting at #{module-path}"
+            paths = paths ++ path-with-index
             {paths, literal:literal}
     
     
