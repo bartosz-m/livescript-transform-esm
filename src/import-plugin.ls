@@ -326,6 +326,7 @@ ExpandGlobImport <<<
             source = Literal[create] value: "'#{it}'"
                 copy-source-location literal, ..
             @Import[create] source: source
+                copy-source-location literal, ..
 
 ExpandGlobImportAsObject = ^^MatchMap
 ExpandGlobImportAsObject <<<

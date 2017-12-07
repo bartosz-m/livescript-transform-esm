@@ -465,6 +465,7 @@ ExtractExportNameFromImport <<<
         _export = @ast.Export[create] do
             local: tmp #Identifier[create] name: name
             alias: export-id
+        copy-source-location _import, _export
         [_import, _export]
         # name =  path.basename name.replace /'/gi ''
         # @ast.ReExport[create] do
