@@ -315,7 +315,7 @@ ExpandGlobImport <<<
             glob = literal-to-string literal
             filename =   node.filename.replace /^\w+\:\/{0,2}/ ''
             module-path = path.dirname filename
-            paths = globby.sync glob, cwd: module-path, nodir: false
+            paths = globby.sync glob, cwd: module-path
             .map ->
                 without-ext = it.replace (path.extname it), ''
                 './' + without-ext
@@ -345,7 +345,7 @@ ExpandGlobImportAsObject <<<
             #remove protocol if any
             filename =   node.filename.replace /^\w+\:\/{0,2}/ ''
             module-path = path.dirname filename
-            paths = globby.sync glob, cwd: module-path, nodir: false
+            paths = globby.sync glob, cwd: module-path
             .map ->
                 without-ext = it.replace (path.extname it), ''
                 './' + without-ext
