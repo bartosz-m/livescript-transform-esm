@@ -313,11 +313,14 @@ ExpandGlobImport <<<
         and literal.value.match /\*/
         and not is-expression node
             glob = literal-to-string literal
-            module-path = path.dirname node.filename
+            filename =   node.filename.replace /^\w+\:\/{0,2}/ ''
+            module-path = path.dirname filename
             paths = globby.sync glob, cwd: module-path
             .map ->
                 without-ext = it.replace (path.extname it), ''
                 './' + without-ext
+            if paths.length == 0
+                throw Error "Do not fout any module at #{glob} starting at #{module-path}"
             {paths, literal}
     
     map: ({paths, literal}) ->
@@ -339,11 +342,15 @@ ExpandGlobImportAsObject <<<
         and literal.value.match /\*/
         and is-expression node
             glob = literal-to-string literal
-            module-path = path.dirname node.filename
+            #remove protocol if any
+            filename =   node.filename.replace /^\w+\:\/{0,2}/ ''
+            module-path = path.dirname filename
             paths = globby.sync glob, cwd: module-path
             .map ->
                 without-ext = it.replace (path.extname it), ''
                 './' + without-ext
+            if paths.length == 0
+                throw Error "Do not fout any module at #{glob} starting at #{module-path}"
             {paths, literal:literal}
     
     
@@ -352,8 +359,8 @@ ExpandGlobImportAsObject <<<
         result = ObjectPattern[create] items: paths.map ~>
             source = Literal[create] value: "'#{it}'"
                 copy-source-location literal, ..
-            @Import[create] do
-                source: source
+            @Import[create] {source}
+                copy-source-location literal, ..
         
         result
             copy-source-location literal, ..
