@@ -16,6 +16,7 @@ import
     \js-nodes/components/Copiable
     \livescript-compiler/lib/core/symbols : { create }
     \./livescript/ast/Import
+    \./livescript/ast/IdentifierAlias
     \./livescript/ast/Export
     \./nodes/MatchMap
     \./utils : ...
@@ -355,13 +356,14 @@ ExpandGlobImportAsObject <<<
         
         result
             copy-source-location literal, ..
-          
 
 ExpandMetaImport = ^^MatchMap
 ExpandMetaImport <<<
     name: \ExpandMetaImport
     
     export-resolver: null
+    
+    ast: {}
     
     match: (node) ->
         if node.inject-to-scope
@@ -373,7 +375,9 @@ ExpandMetaImport <<<
                 throw Error "Meta-import requires filename property on Import nodes"
             module-url = literal-to-string source
             exports = @export-resolver.resolve (literal-to-string source), filename
-            items = exports.map -> 
+            exports-without-default = exports.filter (.name.value != \default)
+            there-is-default = exports.length != exports-without-default.length
+            items = exports-without-default.map ->
                 Identifier[create] name: it.name.value
                     copy-source-location source, ..
             
@@ -381,7 +385,13 @@ ExpandMetaImport <<<
                 copy-source-location source, ..
             resolved-names = ObjectPattern[create] {items}
                 copy-source-location source, ..
-            @Import[create] do
+            if there-is-default
+                original = Identifier[create] name: \default
+                alias = Identifier[create] name: source-to-name source
+                default-import = @ast.IdentifierAlias[create] {original,alias}
+                    copy-source-location source, ..
+                items.unshift default-import
+            @ast.EsImport[create] do
                 names: resolved-names
                 source: resolved-source
         catch
@@ -597,6 +607,8 @@ export default EnableImports = ^^Plugin
       
         EsImport = Import[copy]!
         @livescript.ast <<< {EsImport}
+        @livescript.ast
+            ..IdentifierAlias = IdentifierAlias[copy]!
         
         export-resolver = ExportResolver with {@livescript, Import: EsImport}
         
@@ -608,7 +620,7 @@ export default EnableImports = ^^Plugin
             ..append ExpandObjectImports with Import: EsImport
             ..append ConvertImportsObjectNamesToPatterns
             ..append ExpandArrayImports with Import: EsImport
-            ..append ExpandMetaImport with {Import: EsImport, export-resolver}
+            ..append ExpandMetaImport with { ast: @livescript.ast, export-resolver}
             
                 
         EnableImports = ConditionalNode[copy]!
@@ -639,3 +651,9 @@ export default EnableImports = ^^Plugin
                 unless @names.items or @all
                     required = "(#{required}['__default__'] || #{required})"
                 @to-source-node parts: [ "var ", names, " = ", required, @terminator ]
+            
+            @livescript.ast.IdentifierAlias.compile[as-node]js-function = (o) ->
+                original = if @original.name != \default
+                    then @original.compile o
+                    else '__default__'
+                @to-source-node parts: [ original, ' : ', (@alias.compile o)]
