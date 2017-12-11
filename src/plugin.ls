@@ -671,23 +671,36 @@ TransformESM <<<
                 ..append ExtractExportNameFromLiteral
                 ..append CheckIfOnlyDefaultExports
                 ..append MarkAsScript
-            MyExport.compile[as-node].js-function = (o) ->
-                name = @name.compile o
-                inner = (@local.compile o)
-                wrap-default = -> if it == "'default'" then "Symbol.for('default.module')" else it
-                # property = if 'default' in @name<[name value]>
-                property = if @default
-                    then "['__default__']"
-                    else if @name.reserved
-                        then [ \[ (@name.compile o), \] ]
-                        else [ \. name ]
-                if @override-module
-                    named-default-export = if @local[type] == \Literal
-                        then []
-                        else [@local.terminator, "\n", o.indent, "Object.defineProperty(module.exports, '__default__', {enumerable:false, value: module.exports})"]
-                    @to-source-node parts: [ "module.exports = " , inner, ...named-default-export ]               
-                else
+            if @config.override-module == false
+                MyExport.compile[as-node].js-function = (o) ->
+                    name = @name.compile o
+                    inner = (@local.compile o)
+                    wrap-default = -> if it == "'default'" then "Symbol.for('default.module')" else it
+                    # property = if 'default' in @name<[name value]>
+                    property = if @default
+                        then "['__default__']"
+                        else if @name.reserved
+                            then [ \[ (@name.compile o), \] ]
+                            else [ \. name ]
                     @to-source-node parts: [ "exports", ...property," = " , inner ]
+            else
+                MyExport.compile[as-node].js-function = (o) ->
+                    name = @name.compile o
+                    inner = (@local.compile o)
+                    wrap-default = -> if it == "'default'" then "Symbol.for('default.module')" else it
+                    # property = if 'default' in @name<[name value]>
+                    property = if @default
+                        then "['__default__']"
+                        else if @name.reserved
+                            then [ \[ (@name.compile o), \] ]
+                            else [ \. name ]
+                    if @override-module
+                        named-default-export = if @local[type] == \Literal
+                            then []
+                            else [@local.terminator, "\n", o.indent, "Object.defineProperty(module.exports, '__default__', {enumerable:false, value: module.exports})"]
+                        @to-source-node parts: [ "module.exports = " , inner, ...named-default-export ]               
+                    else
+                        @to-source-node parts: [ "exports", ...property," = " , inner ]
                 
         
         
