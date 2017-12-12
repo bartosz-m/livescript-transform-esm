@@ -265,8 +265,53 @@ SplitAssignExports <<<
     map: ({alias, assign}) ->
         identifier = Identifier[create] name: assign.left.value, exported: true
             copy-source-location assign.left, ..
+        
         assign.left = identifier
         [assign, @ast.Export[create] {local: assign.left, alias}]
+    
+    exec: ->
+        if matched = @match it
+            @replace matched
+
+ExpandChain = ^^BaseNode
+ExpandChain <<<
+    name: \ExpandChain
+    ast: {}
+    (copy): -> ^^@
+    match: ->
+        if(chain = it.local)[type] == \Chain
+        and chain.head.value == '..'
+        and not it.alias
+            {chain, node:it}
+    map: ({chain,node}) ->
+        tmp = TemporarVariable[create] name: \exports, is-export: true
+        assign = Assign[create] left: tmp, right: chain
+            copy-source-location chain, ..
+        identifier = Identifier[create] name: chain.tails.0.key.name, exported: true
+            copy-source-location chain.tails.0, ..
+        _export = @ast.Export[create] local: tmp, alias: identifier
+            copy-source-location chain, ..
+        [assign, _export]
+    
+    exec: ->
+        if matched = @match it
+            @replace matched
+
+ExpandChainCJS = ^^BaseNode
+ExpandChainCJS <<<
+    name: \ExpandChainCJS
+    ast: {}
+    (copy): -> ^^@
+    match: ->
+        if(chain = it.local)[type] == \Chain
+        and chain.head.value == '..'
+        and not it.alias
+            {chain, node:it}
+    map: ({chain}) ->
+        identifier = Identifier[create] name: chain.tails.0.key.name, exported: true
+            copy-source-location chain.tails.0, ..
+        @ast.Export[create] local: chain, alias: identifier
+            copy-source-location chain, ..
     
     exec: ->
         if matched = @match it
@@ -648,7 +693,7 @@ TransformESM <<<
             ..append EnableDefaultExports with @livescript{ast}
             ..append ExpandObjectExports with @livescript{ast}
             ..append ExpandObjectPatternExports with @livescript{ast}
-            ..append ExtractExportNameFromImport with @livescript{ast}
+            ..append ExtractExportNameFromImport with @livescript{ast}            
         @livescript.expand
             ..append InsertExportNodes with @livescript{ast}
             ..append EnableExports
@@ -661,11 +706,14 @@ TransformESM <<<
                 ..append WrapAnonymousFunctionExports with @livescript{ast}
                 ..append SplitAssignExports with @livescript{ast}
                 ..append ExpandCascadeExports with @livescript{ast}
+                ..append ExpandChain with @livescript{ast}
             @livescript.postprocess-ast
                 ..append MoveExportsToTop
                 ..append DisableImplicitExportVariableDeclaration
             @livescript.ast.Block.Compile.append AddExportsDeclarations
         else
+            ExportNodes
+                ..append ExpandChainCJS with @livescript{ast}
             @livescript.postprocess-ast
                 ..append ExtractExportNameFromAssign
                 ..append ExtractExportNameFromLiteral
