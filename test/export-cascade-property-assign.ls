@@ -1,0 +1,2 @@
+Foo = {}
+    export ..name = \foo

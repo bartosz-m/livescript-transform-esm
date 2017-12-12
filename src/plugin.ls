@@ -263,11 +263,14 @@ SplitAssignExports <<<
         if(assign = it.local)[type] == \Assign
             {alias:it.alias,assign}
     map: ({alias, assign}) ->
-        identifier = Identifier[create] name: assign.left.value, exported: true
-            copy-source-location assign.left, ..
+        unless assign.left[type] == \Chain
+            identifier = Identifier[create] name: (extract-name assign.left), exported: true
+                copy-source-location assign.left, ..
         
-        assign.left = identifier
-        [assign, @ast.Export[create] {local: assign.left, alias}]
+            assign.left = identifier
+            [assign, @ast.Export[create] {local: assign.left, alias}]
+        else
+            [assign, @ast.Export[create] {local: assign.left, alias}]
     
     exec: ->
         if matched = @match it
@@ -424,6 +427,17 @@ RegisterExportsOnRoot <<<
         exports = OnlyExports.exec ast-root
         ast-root.exports = exports
 
+extract-name = (node) ->
+    switch (Type = node[type])
+    | \Literal \Var => node.value
+    | \Chain =>
+        if node.head.value == \..
+        and node.tails.0.key?name?
+            node.tails.0.key.name
+        else
+            throw Error "Cannot extract name from chain"
+    | otherwise => throw Error "Cannot extract name from #{Type}"
+
 # TODO this should be ConditionalNode
 ExtractExportNameFromAssign = ^^BaseNode
 ExtractExportNameFromAssign <<<
@@ -436,7 +450,7 @@ ExtractExportNameFromAssign <<<
             {node:it,assign}
 
     map: ({node, assign}) ->
-        node.alias = Identifier[create] name: assign.left.value, exported: true
+        node.alias = Identifier[create] name: (extract-name assign.left), exported: true
             copy-source-location assign.left, ..
     
     exec: ->
@@ -723,8 +737,6 @@ TransformESM <<<
                 MyExport.compile[as-node].js-function = (o) ->
                     name = @name.compile o
                     inner = (@local.compile o)
-                    wrap-default = -> if it == "'default'" then "Symbol.for('default.module')" else it
-                    # property = if 'default' in @name<[name value]>
                     property = if @default
                         then "['__default__']"
                         else if @name.reserved
@@ -735,8 +747,6 @@ TransformESM <<<
                 MyExport.compile[as-node].js-function = (o) ->
                     name = @name.compile o
                     inner = (@local.compile o)
-                    wrap-default = -> if it == "'default'" then "Symbol.for('default.module')" else it
-                    # property = if 'default' in @name<[name value]>
                     property = if @default
                         then "['__default__']"
                         else if @name.reserved
