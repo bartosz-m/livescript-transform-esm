@@ -26,15 +26,23 @@ InsertDynamicImport <<<
     map: (sources) ->
         @ast.DynamicImport[create] {sources}
     
-    
-    
 export default DynamicImportTransform = ^^Plugin
     module.exports = ..
 
     ..name = 'dynamic-import'
     
     ..config = {}
-
+    
+    ..utils =
+        dynamic-import: (specifier) ->
+            new Promise (resolve,reject) !->
+                set-timeout do
+                    !->
+                        try
+                            resolve require specifier
+                        catch
+                            reject e
+                    0
     ..enable = !->
         special-lex = JsNode[copy]!
             ..js-function = (lexed) ->
@@ -75,5 +83,6 @@ export default DynamicImportTransform = ^^Plugin
         if @config.format == \cjs
              @livescript.ast.DynamicImport.compile[as-node]js-function = (o) ->
                    sources = @sources.map (.compile o)
-                   @to-source-node parts: [ "Promise.resolve( require(", sources, ") )" ]
+                   _require = ["require(", sources, ")"]
+                   @to-source-node parts: [ "Promise.resolve( ", ..._require,"['__default__']", " || ", ..._require, " )" ]
       
