@@ -14,7 +14,7 @@ esm-compiler = Compiler.create livescript: livescript with {lexer}
     plugin.install ..
 
 cjs-compiler = Compiler.create livescript: livescript with {lexer}
-    plugin.install .., format: \cjs
+    plugin.install .., format: \cjs, override-module: true
 
 assert esm-compiler.ast.Block != cjs-compiler.ast.Block
 

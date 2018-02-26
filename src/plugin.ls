@@ -663,7 +663,8 @@ export default TransformESM = ^^Plugin
 TransformESM <<<
     name: 'transform-esm'
     
-    config: {}
+    config: 
+        override-module: false
 
     enable: !->
         special-lex = JsNode[copy]!
